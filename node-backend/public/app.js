@@ -1,4 +1,5 @@
 const AUTH_STORE_KEY = "blackjack-browser-client:auth:v1";
+const ADMIN_TOKEN_KEY = "blackjack-browser-client:admin:v1";
 const OPEN_TABLE_IDS = ["table-1", "table-2", "table-3", "table-4"];
 const socket = io();
 
@@ -15,6 +16,17 @@ const state = {
   lastTablesFetchId: 0,
   lastAppliedTablesFetchId: 0,
 };
+
+function isMobileLayout() {
+  return window.matchMedia("(max-width: 760px)").matches;
+}
+
+function syncResponsiveShell() {
+  const mobile = isMobileLayout();
+  document.body.classList.toggle("is-mobile-layout", mobile);
+  document.body.classList.toggle("is-mobile-joined", mobile && state.joined);
+  document.body.classList.toggle("is-mobile-lobby", mobile && !state.joined);
+}
 
 const elements = {
   connectionBadge: document.querySelector("#connectionBadge"),
@@ -61,6 +73,21 @@ const elements = {
   myPlayersValue: document.querySelector("#myPlayersValue"),
   myPhaseValue: document.querySelector("#myPhaseValue"),
   actionHint: document.querySelector("#actionHint"),
+  adminMenuButton: document.querySelector("#adminMenuButton"),
+  adminGate: document.querySelector("#adminGate"),
+  adminLoginForm: document.querySelector("#adminLoginForm"),
+  adminPasswordInput: document.querySelector("#adminPasswordInput"),
+  adminLoginError: document.querySelector("#adminLoginError"),
+  adminGateCloseButton: document.querySelector("#adminGateCloseButton"),
+  adminPanel: document.querySelector("#adminPanel"),
+  adminRefreshButton: document.querySelector("#adminRefreshButton"),
+  adminLogoutButton: document.querySelector("#adminLogoutButton"),
+  adminCloseButton: document.querySelector("#adminCloseButton"),
+  adminStatusLine: document.querySelector("#adminStatusLine"),
+  adminAccountsBody: document.querySelector("#adminAccountsBody"),
+  adminTablesList: document.querySelector("#adminTablesList"),
+  adminBulkDeltaInput: document.querySelector("#adminBulkDeltaInput"),
+  adminBulkApplyButton: document.querySelector("#adminBulkApplyButton"),
 };
 
 function defaultState() {
@@ -767,6 +794,7 @@ async function joinWithIdentity(identity) {
   }
   renderState(response.state);
   setMenuOpen(false);
+  syncResponsiveShell();
   logLine("Joined table", { tableId: response.tableId, playerId: response.playerId });
 }
 
@@ -856,6 +884,7 @@ async function handleLogout() {
   clearTableSessionBaseline();
   updateAccountLabel();
   renderState(defaultState());
+  syncResponsiveShell();
   showAuthGate();
   logLine("Signed out");
 }
@@ -882,6 +911,7 @@ async function handleLeave() {
     state.currentState = null;
     clearTableSessionBaseline();
     renderState(defaultState());
+    syncResponsiveShell();
     logLine("Left table");
   } catch (error) {
     logLine(`Leave failed: ${error.message}`);
@@ -901,6 +931,310 @@ async function handleAction(eventName, payload = {}) {
     logLine(`Sent ${eventName}`, payload);
   } catch (error) {
     logLine(`${eventName} failed: ${error.message}`);
+  }
+}
+
+let adminToken = loadStoredAdminToken();
+
+function loadStoredAdminToken() {
+  try {
+    return window.localStorage.getItem(ADMIN_TOKEN_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+function saveStoredAdminToken(token) {
+  try {
+    if (token) {
+      window.localStorage.setItem(ADMIN_TOKEN_KEY, token);
+    } else {
+      window.localStorage.removeItem(ADMIN_TOKEN_KEY);
+    }
+  } catch {
+    // Ignore storage errors.
+  }
+}
+
+function openAdminGate() {
+  elements.adminLoginError.hidden = true;
+  elements.adminPasswordInput.value = "";
+  elements.adminGate.classList.add("is-visible");
+}
+
+function closeAdminGate() {
+  elements.adminGate.classList.remove("is-visible");
+}
+
+function openAdminPanel() {
+  elements.adminPanel.classList.add("is-visible");
+  refreshAdminData();
+}
+
+function closeAdminPanel() {
+  elements.adminPanel.classList.remove("is-visible");
+}
+
+async function adminFetchJson(url, options = {}) {
+  const headers = { ...(options.headers ?? {}), "x-admin-token": adminToken ?? "" };
+  const response = await fetch(url, { ...options, headers });
+  const payload = await response.json().catch(() => ({}));
+
+  if (response.status === 401) {
+    adminToken = null;
+    saveStoredAdminToken(null);
+    closeAdminPanel();
+    openAdminGate();
+    elements.adminLoginError.textContent = payload.error ?? "Admin session expired. Please log in again.";
+    elements.adminLoginError.hidden = false;
+    throw new Error(payload.error ?? "Admin session expired.");
+  }
+
+  if (!response.ok) {
+    throw new Error(payload.error ?? `Request failed (${response.status})`);
+  }
+
+  return payload;
+}
+
+function handleAdminMenuButtonClick() {
+  if (adminToken) {
+    openAdminPanel();
+    return;
+  }
+
+  openAdminGate();
+}
+
+async function handleAdminLoginSubmit(event) {
+  event.preventDefault();
+  const password = elements.adminPasswordInput.value;
+  elements.adminLoginError.hidden = true;
+
+  try {
+    const payload = await fetchJson("/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+
+    adminToken = payload.token;
+    saveStoredAdminToken(adminToken);
+    closeAdminGate();
+    openAdminPanel();
+  } catch (error) {
+    elements.adminLoginError.textContent = error.message;
+    elements.adminLoginError.hidden = false;
+  }
+}
+
+async function handleAdminLogout() {
+  try {
+    await adminFetchJson("/api/admin/logout", { method: "POST" });
+  } catch {
+    // Best-effort: still clear the local token even if the request fails.
+  }
+
+  adminToken = null;
+  saveStoredAdminToken(null);
+  closeAdminPanel();
+}
+
+async function refreshAdminData() {
+  elements.adminStatusLine.textContent = "Loading...";
+  try {
+    const payload = await adminFetchJson("/api/admin/overview");
+    renderAdminAccounts(payload.accounts ?? []);
+    renderAdminTables(payload.tables ?? []);
+    elements.adminStatusLine.textContent = `Loaded ${new Date().toLocaleTimeString()}`;
+  } catch (error) {
+    elements.adminStatusLine.textContent = `Failed to load: ${error.message}`;
+  }
+}
+
+function renderAdminAccounts(accountsList) {
+  elements.adminAccountsBody.innerHTML = "";
+
+  if (accountsList.length === 0) {
+    elements.adminAccountsBody.innerHTML = '<tr><td colspan="5" class="empty-state">No accounts yet.</td></tr>';
+    return;
+  }
+
+  for (const account of accountsList) {
+    const row = document.createElement("tr");
+    const createdLabel = account.createdAt ? new Date(account.createdAt).toLocaleDateString() : "-";
+    row.innerHTML = `
+      <td>${escapeHtml(account.username)}</td>
+      <td>${escapeHtml(account.displayName)}</td>
+      <td><input type="number" min="0" class="admin-balance-input" value="${escapeHtml(String(account.balance))}" /></td>
+      <td>${escapeHtml(createdLabel)}</td>
+      <td class="admin-row-actions">
+        <button type="button" class="admin-save-balance">Save</button>
+        <button type="button" class="admin-set-password">Set Password</button>
+        <button type="button" class="admin-delete-account danger">Delete</button>
+      </td>
+    `;
+
+    row.querySelector(".admin-save-balance").addEventListener("click", () => {
+      handleAdminSaveBalance(account.username, row.querySelector(".admin-balance-input"));
+    });
+    row.querySelector(".admin-set-password").addEventListener("click", () => handleAdminSetPassword(account.username));
+    row.querySelector(".admin-delete-account").addEventListener("click", () => handleAdminDeleteAccount(account.username));
+    elements.adminAccountsBody.append(row);
+  }
+}
+
+async function handleAdminSaveBalance(username, input) {
+  const value = Number.parseInt(input.value, 10);
+  if (!Number.isFinite(value) || value < 0) {
+    window.alert("Enter a valid non-negative balance.");
+    return;
+  }
+
+  try {
+    await adminFetchJson(`/api/admin/accounts/${encodeURIComponent(username)}/balance`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ balance: value }),
+    });
+    await refreshAdminData();
+  } catch (error) {
+    window.alert(`Failed to update balance: ${error.message}`);
+  }
+}
+
+async function handleAdminSetPassword(username) {
+  const password = window.prompt(`New password for ${username} (min 6 characters):`);
+  if (!password) {
+    return;
+  }
+
+  try {
+    await adminFetchJson(`/api/admin/accounts/${encodeURIComponent(username)}/password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    window.alert("Password updated.");
+  } catch (error) {
+    window.alert(`Failed to set password: ${error.message}`);
+  }
+}
+
+async function handleAdminDeleteAccount(username) {
+  if (!window.confirm(`Delete account "${username}"? This cannot be undone.`)) {
+    return;
+  }
+
+  try {
+    await adminFetchJson(`/api/admin/accounts/${encodeURIComponent(username)}`, { method: "DELETE" });
+    await refreshAdminData();
+  } catch (error) {
+    window.alert(`Failed to delete account: ${error.message}`);
+  }
+}
+
+async function handleAdminBulkAdjust() {
+  const delta = Number.parseInt(elements.adminBulkDeltaInput.value, 10);
+  if (!Number.isFinite(delta) || delta === 0) {
+    window.alert("Enter a non-zero whole number amount to apply to every account.");
+    return;
+  }
+
+  const verb = delta > 0 ? "add" : "remove";
+  if (!window.confirm(`This will ${verb} ${Math.abs(delta)} ${delta > 0 ? "to" : "from"} every player's account balance. Continue?`)) {
+    return;
+  }
+
+  try {
+    const payload = await adminFetchJson("/api/admin/accounts/adjust-all", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ delta }),
+    });
+    elements.adminBulkDeltaInput.value = "";
+    await refreshAdminData();
+    window.alert(`Updated ${payload.count} account${payload.count === 1 ? "" : "s"}.`);
+  } catch (error) {
+    window.alert(`Failed to adjust balances: ${error.message}`);
+  }
+}
+
+function renderAdminTables(tablesList) {
+  elements.adminTablesList.innerHTML = "";
+
+  if (tablesList.length === 0) {
+    elements.adminTablesList.innerHTML = '<p class="empty-state">No active tables.</p>';
+    return;
+  }
+
+  for (const table of tablesList) {
+    const card = document.createElement("article");
+    card.className = "admin-table-card";
+    const players = Array.isArray(table.players) ? table.players : [];
+    const playersHtml = players.length === 0
+      ? '<p class="empty-state">No players seated.</p>'
+      : `<table class="admin-table">
+          <thead>
+            <tr><th>Player</th><th>Balance</th><th>Bet</th><th>Status</th><th>Connection</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            ${players.map((player) => `
+              <tr>
+                <td>${escapeHtml(player.name)}</td>
+                <td>${escapeHtml(String(player.balance))}</td>
+                <td>${escapeHtml(String(player.currentBet ?? 0))}</td>
+                <td>${escapeHtml(formatResult(player.status))}</td>
+                <td>${player.isConnected ? "Online" : "Offline"}</td>
+                <td><button type="button" class="admin-kick-player danger" data-table-id="${escapeHtml(table.tableId)}" data-player-id="${escapeHtml(player.id)}">Kick</button></td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>`;
+
+    card.innerHTML = `
+      <div class="admin-table-card-head">
+        <strong>${escapeHtml(table.tableId)}</strong>
+        <span class="mini-badge">${escapeHtml(formatResult(table.phase))}</span>
+        <button type="button" class="admin-reset-table danger" data-table-id="${escapeHtml(table.tableId)}">Reset Table</button>
+      </div>
+      ${playersHtml}
+    `;
+
+    elements.adminTablesList.append(card);
+  }
+
+  elements.adminTablesList.querySelectorAll(".admin-kick-player").forEach((button) => {
+    button.addEventListener("click", () => handleAdminKickPlayer(button.dataset.tableId, button.dataset.playerId));
+  });
+  elements.adminTablesList.querySelectorAll(".admin-reset-table").forEach((button) => {
+    button.addEventListener("click", () => handleAdminResetTable(button.dataset.tableId));
+  });
+}
+
+async function handleAdminKickPlayer(tableId, playerId) {
+  if (!window.confirm(`Kick ${playerId} from ${tableId}?`)) {
+    return;
+  }
+
+  try {
+    await adminFetchJson(`/api/admin/tables/${encodeURIComponent(tableId)}/kick/${encodeURIComponent(playerId)}`, { method: "POST" });
+    await refreshAdminData();
+  } catch (error) {
+    window.alert(`Failed to kick player: ${error.message}`);
+  }
+}
+
+async function handleAdminResetTable(tableId) {
+  if (!window.confirm(`Reset table ${tableId}? This removes every seated player.`)) {
+    return;
+  }
+
+  try {
+    await adminFetchJson(`/api/admin/tables/${encodeURIComponent(tableId)}/reset`, { method: "POST" });
+    await refreshAdminData();
+  } catch (error) {
+    window.alert(`Failed to reset table: ${error.message}`);
   }
 }
 
@@ -944,6 +1278,14 @@ elements.menuToggleButton.addEventListener("click", () => {
 elements.menuCloseButton.addEventListener("click", () => setMenuOpen(false));
 elements.menuBackdrop.addEventListener("click", () => setMenuOpen(false));
 
+elements.adminMenuButton.addEventListener("click", handleAdminMenuButtonClick);
+elements.adminLoginForm.addEventListener("submit", handleAdminLoginSubmit);
+elements.adminGateCloseButton.addEventListener("click", closeAdminGate);
+elements.adminCloseButton.addEventListener("click", closeAdminPanel);
+elements.adminRefreshButton.addEventListener("click", refreshAdminData);
+elements.adminLogoutButton.addEventListener("click", handleAdminLogout);
+elements.adminBulkApplyButton.addEventListener("click", handleAdminBulkAdjust);
+
 socket.on("connect", async () => {
   setConnection(true);
   logLine("Socket connected", { socketId: socket.id });
@@ -956,6 +1298,7 @@ socket.on("disconnect", (reason) => {
   state.currentState = null;
   clearTableSessionBaseline();
   renderState(defaultState());
+  syncResponsiveShell();
   if (state.authenticated) {
     setMenuOpen(true);
   }
@@ -979,6 +1322,16 @@ socket.on("blackjack:error", (payload) => {
   logLine(`Server error: ${payload.message}`);
 });
 
+socket.on("blackjack:kicked", (payload) => {
+  state.joined = false;
+  state.currentState = null;
+  clearTableSessionBaseline();
+  renderState(defaultState());
+  syncResponsiveShell();
+  elements.actionHint.textContent = "You were removed from the table by an administrator.";
+  logLine("Removed by administrator", payload);
+});
+
 socket.on("blackjack:table_closed", (payload) => {
   state.joined = false;
   state.currentState = null;
@@ -987,12 +1340,14 @@ socket.on("blackjack:table_closed", (payload) => {
     renderTables(state.tables);
   }
   renderState(defaultState());
+  syncResponsiveShell();
   logLine("Table closed", payload);
 });
 
 socket.on("blackjack:session_replaced", (payload) => {
   state.joined = false;
   renderState(defaultState());
+  syncResponsiveShell();
   logLine("Session replaced", payload);
 });
 
@@ -1001,6 +1356,7 @@ async function bootstrap() {
   renderTables([]);
   renderState(defaultState());
   setConnection(false);
+  syncResponsiveShell();
   updateBetBalanceLabel();
 
   const stored = loadStoredAuth();
@@ -1016,7 +1372,8 @@ async function bootstrap() {
     });
     applyAccount(payload.account, stored.token, stored.lastTableId ?? null);
     hideAuthGate();
-    setMenuOpen(true);
+    setMenuOpen(!isMobileLayout());
+    syncResponsiveShell();
     await refreshTables();
     updateSeatSummary(getMe());
     updateActionState();
@@ -1027,5 +1384,9 @@ async function bootstrap() {
     await refreshTables();
   }
 }
+
+window.addEventListener("resize", () => {
+  syncResponsiveShell();
+});
 
 bootstrap();

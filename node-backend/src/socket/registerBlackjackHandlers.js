@@ -82,8 +82,8 @@ export function registerBlackjackHandlers({
     };
   };
 
-  const serializeTableState = (tableId, viewerPlayerId = null) => {
-    const state = registry.serializeTable(tableId, viewerPlayerId);
+  const serializeTableState = (tableId, viewerPlayerId = null, revealDealerHole = false) => {
+    const state = registry.serializeTable(tableId, viewerPlayerId, { revealDealerHole });
     return decorateState(state);
   };
 
@@ -473,4 +473,74 @@ export function registerBlackjackHandlers({
       scheduleDisconnectRemoval();
     });
   });
+
+  const kickPlayer = (tableId, playerId) => {
+    const table = registry.getTable(tableId);
+    if (!table) {
+      throw new Error("Table not found.");
+    }
+
+    const seated = table.players.some((player) => player.id === playerId);
+    if (!seated) {
+      throw new Error("Player is not seated at this table.");
+    }
+
+    const presenceKey = getPresenceKey(tableId, playerId);
+    const ownerSocketId = playerOwners.get(presenceKey);
+    if (ownerSocketId) {
+      const ownerSocket = io.sockets.sockets.get(ownerSocketId);
+      if (ownerSocket) {
+        ownerSocket.emit("blackjack:kicked", { tableId, reason: "Removed by administrator." });
+        ownerSocket.leave(tableId);
+      }
+
+      socketPresence.delete(ownerSocketId);
+      playerOwners.delete(presenceKey);
+    }
+
+    finalizePlayerRemoval({ tableId, playerId });
+  };
+
+  const resetTable = (tableId) => {
+    const table = registry.getTable(tableId);
+    if (!table) {
+      throw new Error("Table not found.");
+    }
+
+    const playerIds = table.players.map((player) => player.id);
+    for (const playerId of playerIds) {
+      kickPlayer(tableId, playerId);
+    }
+  };
+
+  const kickPlayerEverywhere = (playerId) => {
+    for (const summary of registry.listTables()) {
+      const table = registry.getTable(summary.tableId);
+      if (table?.players.some((player) => player.id === playerId)) {
+        kickPlayer(summary.tableId, playerId);
+      }
+    }
+  };
+
+  const syncPlayerBalance = (playerId, balance) => {
+    for (const summary of registry.listTables()) {
+      const table = registry.getTable(summary.tableId);
+      const player = table?.players.find((candidate) => candidate.id === playerId);
+      if (player) {
+        player.balance = balance;
+        registry.saveToDisk();
+        emitTableState(summary.tableId);
+      }
+    }
+  };
+
+  const getFullTableState = (tableId) => serializeTableState(tableId, null, true);
+
+  return {
+    kickPlayer,
+    resetTable,
+    kickPlayerEverywhere,
+    syncPlayerBalance,
+    getFullTableState,
+  };
 }

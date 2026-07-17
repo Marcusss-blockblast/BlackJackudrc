@@ -957,6 +957,162 @@ button.accent {
   font-size: 0.9rem;
 }
 
+.admin-entry-panel {
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(240, 215, 158, 0.14);
+}
+
+.admin-entry-button {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px dashed rgba(240, 215, 158, 0.3);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.admin-gate,
+.admin-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(2, 8, 6, 0.78);
+  overflow-y: auto;
+}
+
+.admin-gate.is-visible,
+.admin-panel.is-visible {
+  display: flex;
+}
+
+.admin-gate-card {
+  width: min(380px, 100%);
+  margin: auto;
+  padding: 28px;
+}
+
+.admin-panel-inner {
+  width: min(1040px, 100%);
+  margin: 20px auto;
+  padding: 24px;
+}
+
+.admin-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-panel-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-section {
+  margin-top: 22px;
+}
+
+.admin-section h3 {
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+}
+
+.admin-bulk-row {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(240, 215, 158, 0.12);
+}
+
+.admin-bulk-field {
+  min-width: 240px;
+}
+
+.admin-bulk-field input {
+  width: 100%;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(240, 215, 158, 0.12);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.admin-table thead th {
+  color: var(--gold-soft);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-balance-input {
+  width: 100px;
+  padding: 6px 8px;
+}
+
+.admin-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.admin-row-actions button,
+.admin-table-card-head button,
+.admin-table .admin-kick-player {
+  padding: 6px 10px;
+  font-size: 0.78rem;
+}
+
+button.danger {
+  background: rgba(255, 142, 121, 0.16);
+  color: var(--danger);
+}
+
+.admin-table-card {
+  margin-bottom: 16px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(240, 215, 158, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-table-card:last-child {
+  margin-bottom: 0;
+}
+
+.admin-table-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
 @keyframes rise-in {
   from {
     opacity: 0;
@@ -1018,41 +1174,209 @@ button.accent {
 }
 
 @media (max-width: 760px) {
-  .app-shell {
-    padding: 10px;
-    gap: 8px;
+  html,
+  body {
+    height: auto;
+    min-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
   }
 
-  .dashboard-panel,
+  .app-shell {
+    padding: 6px;
+    gap: 6px;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+    overscroll-behavior-y: auto;
+  }
+
+  body.is-mobile-layout .dashboard-panel {
+    display: none;
+  }
+
+  body.is-mobile-layout:not(.is-mobile-joined) .main-grid {
+    display: none;
+  }
+
+  body.is-mobile-layout.is-mobile-joined .main-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+    min-height: calc(100dvh - 12px);
+    align-content: start;
+  }
+
+  .side-menu,
+  .auth-gate {
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-panel,
+  .dock-panel,
+  .table-felt,
+  .players-zone {
+    overflow: visible;
+    max-height: none;
+    overscroll-behavior-y: auto;
+  }
+
+  .table-panel {
+    grid-row: 1;
+    max-height: none;
+    overflow: hidden;
+  }
+
+  .dock-panel {
+    grid-row: 2;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .round-summary-line,
+  .actionHint,
+  #actionHint {
+    display: none;
+  }
+
   .dock-panel,
   .table-panel,
   .topbar {
-    padding: 12px 14px;
+    padding: 8px 12px;
+  }
+
+  .topbar {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  .brand-line {
+    min-width: 0;
+    flex: 1;
+    gap: 6px;
+  }
+
+  .brand-line .eyebrow {
+    display: none;
+  }
+
+  .brand-line h1 {
+    font-size: 1rem;
+    white-space: nowrap;
+  }
+
+  .topbar-actions {
+    gap: 8px;
+  }
+
+  .menu-toggle {
+    padding: 8px 12px;
+    font-size: 0.78rem;
+    border-radius: 12px;
+  }
+
+  .badge {
+    padding: 4px 8px;
+    font-size: 0.76rem;
   }
 
   .table-felt {
-    padding: 12px;
+    padding: 8px;
   }
 
   .felt-ring {
-    inset: 12px 12px 100px;
+    inset: 6px 6px 64px;
+  }
+
+  .table-topline {
+    gap: 8px;
+    justify-content: space-between;
+  }
+
+  .table-topline .turn-line {
+    font-size: 0.82rem;
+  }
+
+  .table-topline .badge-phase {
+    font-size: 0.74rem;
+    padding: 4px 8px;
+  }
+
+  .result-banner {
+    margin-bottom: 8px;
+    padding: 8px 10px;
+    font-size: 0.82rem;
+  }
+
+  .zone-card {
+    padding: 10px 10px 8px;
+    border-radius: 16px;
+  }
+
+  .dealer-zone {
+    margin-bottom: 8px;
+  }
+
+  .zone-kicker {
+    margin-bottom: 2px;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+  }
+
+  .dealer-zone h2 {
+    font-size: 1rem;
+  }
+
+  .value-line {
+    margin-top: 6px;
+    font-size: 0.92rem;
+  }
+
+  .seat-hero-compact {
+    gap: 10px;
+    justify-content: space-between;
+  }
+
+  .seat-hero-text {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .seat-player {
+    font-size: 0.92rem;
+  }
+
+  .seat-subline {
+    font-size: 0.76rem;
+  }
+
+  .mini-stat {
+    min-width: 72px;
+  }
+
+  .mini-stat strong {
+    font-size: 1.05rem;
   }
 
   .card-tile {
-    min-width: 80px;
-    min-height: 112px;
+    min-width: 64px;
+    min-height: 90px;
   }
 
   .card-rank {
-    font-size: 1.5rem;
+    font-size: 1.15rem;
   }
 
   .card-suit {
-    font-size: 1.8rem;
+    font-size: 1.35rem;
   }
 
   .dock-actions {
-    grid-template-columns: repeat(2, minmax(110px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
 
   #surrenderButton {
@@ -1060,22 +1384,187 @@ button.accent {
   }
 
   .bet-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 8px;
+    align-items: center;
   }
 
   .bet-row #placeBetButton,
   .bet-balance {
-    width: 100%;
+    width: auto;
     min-width: 0;
+  }
+
+  .bet-row #placeBetButton {
+    min-width: 96px;
+    padding: 8px 10px;
+    font-size: 0.82rem;
+  }
+
+  .bet-balance {
+    gap: 1px;
+    text-align: right;
+  }
+
+  .bet-balance-label {
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+  }
+
+  .bet-balance-value {
+    font-size: 1rem;
+  }
+
+  .dock-meta {
+    gap: 10px;
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .dock-panel {
+    padding-top: 10px;
+    padding-bottom: 12px;
+  }
+
+  .dock-actions button {
+    padding: 10px 8px;
+    font-size: 0.8rem;
+    line-height: 1.15;
+  }
+
+  .players-grid {
+    gap: 8px;
+  }
+
+  .player-card {
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  .player-card:not(.is-you):not(.is-current) {
+    display: none;
+  }
+
+  .player-head {
+    gap: 8px;
+  }
+
+  .player-name {
+    font-size: 0.92rem;
+  }
+
+  .player-card.is-you .player-name,
+  .player-card.is-current .player-name {
+    font-size: 0.95rem;
+  }
+
+  .player-summary {
+    margin-top: 6px;
+    font-size: 0.76rem;
+    gap: 6px;
+  }
+
+  .mini-badge {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+  }
+
+  .hand-stack {
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .hand-block {
+    padding: 8px;
+    border-radius: 12px;
+  }
+
+  .hand-meta {
+    margin-top: 4px;
+    font-size: 0.76rem;
+  }
+
+  .hand-metric-value {
+    font-size: 0.98rem;
+  }
+
+  .hand-metric-insurance .hand-metric-value {
+    font-size: 0.82rem;
   }
 
   .seat-hero-stats {
     gap: 12px;
   }
 
+  body.is-mobile-layout:not(.is-mobile-joined) .dock-panel,
+  body.is-mobile-layout:not(.is-mobile-joined) .table-panel,
+  body.is-mobile-layout:not(.is-mobile-joined) .table-topline,
+  body.is-mobile-layout:not(.is-mobile-joined) .table-felt {
+    display: none;
+  }
+
+  body.is-mobile-layout.is-mobile-joined .dashboard-panel {
+    display: none;
+  }
+
+  body.is-mobile-layout.is-mobile-joined .table-panel,
+  body.is-mobile-layout.is-mobile-joined .dock-panel {
+    display: flex;
+  }
+
+  body.is-mobile-layout.is-mobile-joined .table-panel {
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  body.is-mobile-layout.is-mobile-joined .table-felt {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .auth-gate {
+    align-items: flex-start;
+    overflow-y: auto;
+    padding-top: max(20px, env(safe-area-inset-top));
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+  }
+
+  .auth-card {
+    margin: 16px auto;
+    width: min(420px, calc(100vw - 20px));
+    padding: 16px 14px;
+  }
+
+  .auth-tabs {
+    margin-bottom: 12px;
+  }
+
   .card-tile {
     min-width: 56px;
-    min-height: 84px;
-    padding: 10px 8px;
+    min-height: 78px;
+    padding: 8px 6px;
+  }
+
+  .card-row {
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .admin-panel-inner {
+    margin: 8px auto;
+    padding: 14px;
+  }
+
+  .admin-table {
+    font-size: 0.78rem;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    padding: 6px 8px;
+  }
+
+  .admin-balance-input {
+    width: 80px;
   }
 }

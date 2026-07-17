@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BlackJack Údrč</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=20260717-admin-bulk-balance" />
   </head>
   <body>
     <div id="authGate" class="auth-gate is-visible">
@@ -163,9 +163,75 @@
         </div>
         <div id="quickTablesGrid" class="quick-tables-grid"></div>
       </section>
+
+      <section class="admin-entry-panel">
+        <button type="button" id="adminMenuButton" class="admin-entry-button">Admin Panel</button>
+      </section>
     </aside>
 
+    <div id="adminGate" class="admin-gate">
+      <div class="admin-gate-card panel">
+        <h2>Admin Access</h2>
+        <p class="muted">Enter the administrator password to continue.</p>
+        <form id="adminLoginForm" class="form-grid">
+          <label class="full-span">
+            <span>Password</span>
+            <input id="adminPasswordInput" type="password" autocomplete="off" required />
+          </label>
+          <div class="form-actions full-span">
+            <button type="submit" id="adminLoginSubmitButton" class="primary">Unlock</button>
+            <button type="button" id="adminGateCloseButton">Cancel</button>
+          </div>
+          <p id="adminLoginError" class="auth-error full-span" hidden></p>
+        </form>
+      </div>
+    </div>
+
+    <div id="adminPanel" class="admin-panel">
+      <div class="admin-panel-inner panel">
+        <div class="admin-panel-head">
+          <h2>Administrator Dashboard</h2>
+          <div class="admin-panel-actions">
+            <button type="button" id="adminRefreshButton">Refresh</button>
+            <button type="button" id="adminLogoutButton">Log Out Admin</button>
+            <button type="button" id="adminCloseButton">Close</button>
+          </div>
+        </div>
+        <p id="adminStatusLine" class="muted"></p>
+
+        <section class="admin-section">
+          <h3>Accounts</h3>
+          <div class="admin-bulk-row">
+            <label class="admin-bulk-field">
+              <span>Adjust every player's balance by</span>
+              <input id="adminBulkDeltaInput" type="number" step="1" placeholder="e.g. 500 or -100" />
+            </label>
+            <button type="button" id="adminBulkApplyButton" class="primary">Apply To All Players</button>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Display Name</th>
+                  <th>Balance</th>
+                  <th>Created</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="adminAccountsBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="admin-section">
+          <h3>Tables</h3>
+          <div id="adminTablesList" class="admin-tables-list"></div>
+        </section>
+      </div>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
-    <script type="module" src="/app.js"></script>
+    <script type="module" src="/app.js?v=20260717-admin-bulk-balance"></script>
   </body>
 </html>

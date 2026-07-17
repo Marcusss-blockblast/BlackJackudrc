@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { Card, registerBlackjackHandlers, TableRegistry } from "../src/index.js";
+import { AccountStore } from "../src/services/AccountStore.js";
 
 function createIo() {
   const roomEvents = [];
@@ -491,6 +492,68 @@ test("registry persists tables and restores them from disk", () => {
     assert.equal(restoredTable.dealerHand.cards.length, table.dealerHand.cards.length);
     assert.equal(restoredTable.players[0].hand.cards.length, table.players[0].hand.cards.length);
     assert.equal(restoredTable.deck.cards.length, table.deck.cards.length);
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("account store seeds from one file and persists to another", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "blackjack-accounts-"));
+  const seedPath = path.join(tempDir, "seed-accounts.json");
+  const persistencePath = path.join(tempDir, "live-accounts.json");
+
+  try {
+    fs.writeFileSync(seedPath, JSON.stringify({
+      savedAt: new Date().toISOString(),
+      accounts: [
+        {
+          username: "seeduser",
+          displayName: "Seed User",
+          passwordHash: "salt:hash",
+          balance: 250,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    }, null, 2));
+
+    const store = new AccountStore({ persistencePath, seedPath, startingBalance: 1000 });
+    assert.equal(store.getAccount("seeduser")?.balance, 250);
+    assert.equal(fs.existsSync(persistencePath), true);
+
+    const created = store.register("newuser", "Test1234!");
+    assert.equal(created.balance, 1000);
+
+    store.updateBalance("seeduser", 875);
+    const restoredStore = new AccountStore({ persistencePath, seedPath, startingBalance: 1000 });
+    assert.equal(restoredStore.getAccount("seeduser")?.balance, 875);
+    assert.equal(restoredStore.getAccount("newuser")?.balance, 1000);
+    assert.equal(JSON.parse(fs.readFileSync(persistencePath, "utf8")).accounts[0].balance, 875);
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("table registry seeds from one file and persists to another", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "blackjack-tables-"));
+  const seedPath = path.join(tempDir, "seed-tables.json");
+  const persistencePath = path.join(tempDir, "live-tables.json");
+
+  try {
+    const seedTable = new TableRegistry({ persistencePath: seedPath });
+    seedTable.ensurePlayerSeat("seed-table", { id: "p1", name: "Alice", balance: 1000 });
+    seedTable.getTable("seed-table").placeBet("p1", 10);
+    seedTable.saveToDisk();
+
+    const registry = new TableRegistry({ persistencePath, seedPath });
+    assert.equal(registry.getTable("seed-table")?.players.length, 1);
+    assert.equal(fs.existsSync(persistencePath), true);
+
+    registry.ensurePlayerSeat("seed-table", { id: "p2", name: "Bob", balance: 1000 });
+    registry.saveToDisk();
+
+    const restoredRegistry = new TableRegistry({ persistencePath, seedPath });
+    assert.equal(restoredRegistry.getTable("seed-table")?.players.length, 2);
+    assert.equal(JSON.parse(fs.readFileSync(persistencePath, "utf8")).tables[0].players.length, 2);
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }

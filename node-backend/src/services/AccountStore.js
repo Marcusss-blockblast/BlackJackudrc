@@ -50,8 +50,9 @@ function toPublicAccount(account) {
  * external dependency required). Intended for a small self-hosted deployment, not enterprise use.
  */
 export class AccountStore {
-  constructor({ persistencePath = null, startingBalance = DEFAULT_STARTING_BALANCE } = {}) {
+  constructor({ persistencePath = null, seedPath = null, startingBalance = DEFAULT_STARTING_BALANCE } = {}) {
     this.persistencePath = persistencePath;
+    this.seedPath = seedPath;
     this.startingBalance = startingBalance;
     this.accounts = new Map();
     this.loadFromDisk();
@@ -101,6 +102,37 @@ export class AccountStore {
     return toPublicAccount(this.accounts.get(normalizeUsername(username)));
   }
 
+  listAccounts() {
+    return [...this.accounts.values()]
+      .map((account) => toPublicAccount(account))
+      .sort((a, b) => a.username.localeCompare(b.username));
+  }
+
+  setPassword(username, password) {
+    const normalized = normalizeUsername(username);
+    const account = this.accounts.get(normalized);
+    if (!account) {
+      throw new Error("Account not found.");
+    }
+
+    if (String(password ?? "").length < MIN_PASSWORD_LENGTH) {
+      throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+    }
+
+    account.passwordHash = hashPassword(String(password));
+    this.saveToDisk();
+  }
+
+  deleteAccount(username) {
+    const normalized = normalizeUsername(username);
+    const deleted = this.accounts.delete(normalized);
+    if (deleted) {
+      this.saveToDisk();
+    }
+
+    return deleted;
+  }
+
   updateBalance(username, balance) {
     const normalized = normalizeUsername(username);
     const account = this.accounts.get(normalized);
@@ -112,36 +144,50 @@ export class AccountStore {
     this.saveToDisk();
   }
 
+  adjustAllBalances(delta) {
+    const numericDelta = Math.round(Number(delta) || 0);
+    const updated = [];
+
+    for (const account of this.accounts.values()) {
+      account.balance = Math.max(0, Math.round(Number(account.balance) || 0) + numericDelta);
+      updated.push({ username: account.username, balance: account.balance });
+    }
+
+    this.saveToDisk();
+    return updated;
+  }
+
   loadFromDisk() {
-    if (!this.persistencePath || !fs.existsSync(this.persistencePath)) {
+    const sourcePath = this.persistencePath && fs.existsSync(this.persistencePath)
+      ? this.persistencePath
+      : this.seedPath && fs.existsSync(this.seedPath)
+        ? this.seedPath
+        : null;
+
+    if (!sourcePath) {
       return;
     }
 
     try {
-      const raw = fs.readFileSync(this.persistencePath, "utf8");
+      const raw = fs.readFileSync(sourcePath, "utf8");
       const parsed = JSON.parse(raw);
       const entries = Array.isArray(parsed.accounts) ? parsed.accounts : [];
-      let didNormalizeBalances = false;
 
       for (const entry of entries) {
         if (!entry?.username) {
           continue;
         }
 
-        const normalizedBalance = Math.max(this.startingBalance, Math.round(Number(entry.balance) || 0));
-        if (entry.balance !== normalizedBalance) {
-          entry.balance = normalizedBalance;
-          didNormalizeBalances = true;
-        }
+        entry.balance = Math.max(0, Math.round(Number(entry.balance) || 0));
 
         this.accounts.set(entry.username, entry);
       }
 
-      if (didNormalizeBalances) {
+      if (sourcePath === this.seedPath && this.persistencePath && !fs.existsSync(this.persistencePath)) {
         this.saveToDisk();
       }
     } catch (error) {
-      console.error(`Failed to load accounts from ${this.persistencePath}:`, error);
+      console.error(`Failed to load accounts from ${sourcePath}:`, error);
     }
   }
 

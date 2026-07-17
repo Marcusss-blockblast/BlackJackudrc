@@ -77,9 +77,12 @@ Before configuring domain DNS, verify realtime table numbers and states:
 
 ## Important note about game state persistence
 
-Current setup stores table state in a local file path inside the service container:
+Current setup stores account and table state in file paths inside the service container, and the service is configured to use a Render persistent disk so those files survive redeploys:
 
 - `BLACKJACK_STATE_FILE=/opt/render/project/src/node-backend/data/table-state.json`
+- `BLACKJACK_ACCOUNTS_FILE=/opt/render/project/src/node-backend/data/accounts.json`
 
-This survives only within the current running instance and can be lost after some deploy or infrastructure events.
-For long-term durable persistence, migrate table state to a managed database (Postgres or Redis).
+Do not point these variables at a temporary path. If you change them, keep them inside the mounted Render disk path.
+
+If you deploy somewhere without a persistent disk, the files will still be saved during runtime, but redeploys will reset them.
+For long-term durable persistence across hosts, migrate state to a managed database (Postgres or Redis).

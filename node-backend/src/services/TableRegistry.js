@@ -7,10 +7,12 @@ export class TableRegistry {
     defaultNumDecks = 1,
     maxSeatsPerTable = 7,
     persistencePath = null,
+    seedPath = null,
   } = {}) {
     this.defaultNumDecks = defaultNumDecks;
     this.maxSeatsPerTable = maxSeatsPerTable;
     this.persistencePath = persistencePath;
+    this.seedPath = seedPath;
     this.tables = new Map();
 
     this.loadFromDisk();
@@ -85,22 +87,28 @@ export class TableRegistry {
     }));
   }
 
-  serializeTable(tableId, viewerPlayerId = null) {
+  serializeTable(tableId, viewerPlayerId = null, { revealDealerHole = false } = {}) {
     const table = this.getTable(tableId);
     if (!table) {
       return null;
     }
 
-    return table.serializeState({ viewerPlayerId });
+    return table.serializeState({ viewerPlayerId, revealDealerHole });
   }
 
   loadFromDisk() {
-    if (!this.persistencePath || !fs.existsSync(this.persistencePath)) {
+    const sourcePath = this.persistencePath && fs.existsSync(this.persistencePath)
+      ? this.persistencePath
+      : this.seedPath && fs.existsSync(this.seedPath)
+        ? this.seedPath
+        : null;
+
+    if (!sourcePath) {
       return;
     }
 
     try {
-      const raw = fs.readFileSync(this.persistencePath, "utf8");
+      const raw = fs.readFileSync(sourcePath, "utf8");
       const parsed = JSON.parse(raw);
       const tableSnapshots = Array.isArray(parsed.tables) ? parsed.tables : [];
 
@@ -111,8 +119,12 @@ export class TableRegistry {
 
         this.tables.set(snapshot.tableId, this.hydrateTable(snapshot));
       }
+
+      if (sourcePath === this.seedPath && this.persistencePath && !fs.existsSync(this.persistencePath)) {
+        this.saveToDisk();
+      }
     } catch (error) {
-      console.error(`Failed to load blackjack state from ${this.persistencePath}:`, error);
+      console.error(`Failed to load blackjack state from ${sourcePath}:`, error);
     }
   }
 

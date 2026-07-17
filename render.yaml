@@ -8,6 +8,10 @@ services:
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
+    disk:
+      name: blackjack-data
+      mountPath: /opt/render/project/src/node-backend/data
+      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
@@ -21,3 +25,5 @@ services:
         value: "30000"
       - key: BLACKJACK_STATE_FILE
         value: /opt/render/project/src/node-backend/data/table-state.json
+      - key: BLACKJACK_ACCOUNTS_FILE
+        value: /opt/render/project/src/node-backend/data/accounts.json

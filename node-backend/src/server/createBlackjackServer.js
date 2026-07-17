@@ -89,14 +89,23 @@ export async function createBlackjackServer({
     persistencePath,
     seedPath: seedTableStatePath,
   });
-  const accounts = databaseUrl
-    ? new PostgresAccountStore({ connectionString: databaseUrl })
-    : new AccountStore({
-      persistencePath: accountsPersistencePath,
-      seedPath: seedAccountsPath,
-    });
-  if (typeof accounts.initialize === "function") {
-    await accounts.initialize();
+  let accounts = new AccountStore({
+    persistencePath: accountsPersistencePath,
+    seedPath: seedAccountsPath,
+  });
+  let accountBackend = "file";
+  let databaseStartupError = null;
+
+  if (databaseUrl) {
+    try {
+      const postgresAccounts = new PostgresAccountStore({ connectionString: databaseUrl });
+      await postgresAccounts.initialize();
+      accounts = postgresAccounts;
+      accountBackend = "postgres";
+    } catch (error) {
+      databaseStartupError = error instanceof Error ? error.message : String(error);
+      console.error("Postgres account backend unavailable, falling back to file accounts:", databaseStartupError);
+    }
   }
   const sessions = new SessionManager();
 
@@ -141,7 +150,7 @@ export async function createBlackjackServer({
 
   app.get("/health", async (_request, response) => {
     const tableStorage = diagnoseStoragePath(persistencePath);
-    const usingDatabaseAccounts = Boolean(databaseUrl);
+    const usingDatabaseAccounts = accountBackend === "postgres";
     const accountsStorage = usingDatabaseAccounts
       ? null
       : diagnoseStoragePath(accountsPersistencePath);
@@ -155,11 +164,12 @@ export async function createBlackjackServer({
     response.json({
       ok: true,
       storageHealthy,
-      accountBackend: usingDatabaseAccounts ? "postgres" : "file",
+      accountBackend,
       storage: {
         tableState: tableStorage,
         accounts: accountsStorage,
       },
+      databaseStartupError,
       database,
     });
   });

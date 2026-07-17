@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 .env
 node-backend/node_modules/
+node-backend/server-out.log
+node-backend/server-err.log

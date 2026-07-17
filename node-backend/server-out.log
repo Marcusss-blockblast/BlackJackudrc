@@ -1,9 +1,0 @@
-Runtime config: {
-  port: 3000,
-  corsOrigin: '*',
-  persistencePath: 'C:\\Users\\Marek\\Desktop\\blackjack vsechno\\Blackjack Project\\node-backend\\data\\table-state.json',
-  accountsPersistencePath: 'C:\\Users\\Marek\\Desktop\\blackjack vsechno\\Blackjack Project\\node-backend\\data\\accounts.json',
-  hasCustomAdminPassword: false,
-  renderEnvironment: false
-}
-Blackjack server listening on port 3000

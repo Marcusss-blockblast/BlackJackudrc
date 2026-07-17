@@ -21,8 +21,9 @@ const disconnectGraceMs = Number.parseInt(process.env.BLACKJACK_DISCONNECT_GRACE
 const persistencePath = process.env.BLACKJACK_STATE_FILE ?? defaultStateFile;
 const accountsPersistencePath = process.env.BLACKJACK_ACCOUNTS_FILE ?? defaultAccountsFile;
 const adminPassword = process.env.BLACKJACK_ADMIN_PASSWORD ?? "DEVU";
+const databaseUrl = process.env.BLACKJACK_DATABASE_URL ?? process.env.DATABASE_URL ?? "";
 
-const { httpServer } = createBlackjackServer({
+const { httpServer } = await createBlackjackServer({
   corsOrigin,
   defaultNumDecks,
   maxSeatsPerTable,
@@ -30,6 +31,7 @@ const { httpServer } = createBlackjackServer({
   persistencePath,
   accountsPersistencePath,
   adminPassword,
+  databaseUrl,
 });
 
 httpServer.listen(port, () => {
@@ -38,6 +40,7 @@ httpServer.listen(port, () => {
     corsOrigin,
     persistencePath,
     accountsPersistencePath,
+    accountBackend: databaseUrl ? "postgres" : "file",
     hasCustomAdminPassword: Boolean(process.env.BLACKJACK_ADMIN_PASSWORD),
     renderEnvironment: Boolean(process.env.RENDER),
   });

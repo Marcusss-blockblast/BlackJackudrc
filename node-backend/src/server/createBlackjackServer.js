@@ -7,6 +7,7 @@ import express from "express";
 import { Server as SocketIOServer } from "socket.io";
 import { TableRegistry } from "../services/TableRegistry.js";
 import { AccountStore } from "../services/AccountStore.js";
+import { PostgresAccountStore } from "../services/PostgresAccountStore.js";
 import { SessionManager } from "../services/SessionManager.js";
 import { registerBlackjackHandlers } from "../socket/registerBlackjackHandlers.js";
 
@@ -63,7 +64,7 @@ function diagnoseStoragePath(filePath) {
   };
 }
 
-export function createBlackjackServer({
+export async function createBlackjackServer({
   corsOrigin = "*",
   defaultNumDecks = 1,
   maxSeatsPerTable = 7,
@@ -71,6 +72,7 @@ export function createBlackjackServer({
   persistencePath = seedTableStatePath,
   accountsPersistencePath = seedAccountsPath,
   adminPassword = process.env.BLACKJACK_ADMIN_PASSWORD || "DEVU",
+  databaseUrl = process.env.BLACKJACK_DATABASE_URL || process.env.DATABASE_URL || "",
 } = {}) {
   const app = express();
   const httpServer = http.createServer(app);
@@ -87,10 +89,15 @@ export function createBlackjackServer({
     persistencePath,
     seedPath: seedTableStatePath,
   });
-  const accounts = new AccountStore({
-    persistencePath: accountsPersistencePath,
-    seedPath: seedAccountsPath,
-  });
+  const accounts = databaseUrl
+    ? new PostgresAccountStore({ connectionString: databaseUrl })
+    : new AccountStore({
+      persistencePath: accountsPersistencePath,
+      seedPath: seedAccountsPath,
+    });
+  if (typeof accounts.initialize === "function") {
+    await accounts.initialize();
+  }
   const sessions = new SessionManager();
 
   const adminTokens = new Map();
@@ -132,25 +139,35 @@ export function createBlackjackServer({
   app.use(express.json());
   app.use(express.static(publicDir));
 
-  app.get("/health", (_request, response) => {
+  app.get("/health", async (_request, response) => {
     const tableStorage = diagnoseStoragePath(persistencePath);
-    const accountsStorage = diagnoseStoragePath(accountsPersistencePath);
-    const storageHealthy = tableStorage.directoryWritable && accountsStorage.directoryWritable;
+    const usingDatabaseAccounts = Boolean(databaseUrl);
+    const accountsStorage = usingDatabaseAccounts
+      ? null
+      : diagnoseStoragePath(accountsPersistencePath);
+    const database = usingDatabaseAccounts && typeof accounts.healthCheck === "function"
+      ? await accounts.healthCheck()
+      : null;
+    const storageHealthy = usingDatabaseAccounts
+      ? Boolean(database?.connected) && tableStorage.directoryWritable
+      : tableStorage.directoryWritable && accountsStorage.directoryWritable;
 
     response.json({
       ok: true,
       storageHealthy,
+      accountBackend: usingDatabaseAccounts ? "postgres" : "file",
       storage: {
         tableState: tableStorage,
         accounts: accountsStorage,
       },
+      database,
     });
   });
 
-  app.post("/api/auth/register", (request, response) => {
+  app.post("/api/auth/register", async (request, response) => {
     try {
       const { username, password } = request.body ?? {};
-      const account = accounts.register(username, password);
+      const account = await accounts.register(username, password);
       const token = sessions.createSession(account.username);
       response.json({ token, account });
     } catch (error) {
@@ -158,10 +175,10 @@ export function createBlackjackServer({
     }
   });
 
-  app.post("/api/auth/login", (request, response) => {
+  app.post("/api/auth/login", async (request, response) => {
     try {
       const { username, password } = request.body ?? {};
-      const account = accounts.verifyLogin(username, password);
+      const account = await accounts.verifyLogin(username, password);
       const token = sessions.createSession(account.username);
       response.json({ token, account });
     } catch (error) {
@@ -175,7 +192,7 @@ export function createBlackjackServer({
     response.json({ ok: true });
   });
 
-  app.get("/api/auth/session", (request, response) => {
+  app.get("/api/auth/session", async (request, response) => {
     const token = request.query.token ?? request.headers["x-session-token"];
     const username = sessions.getUsername(token);
     if (!username) {
@@ -183,7 +200,7 @@ export function createBlackjackServer({
       return;
     }
 
-    response.json({ token, account: accounts.getAccount(username) });
+    response.json({ token, account: await accounts.getAccount(username) });
   });
 
   app.get("/tables", (_request, response) => {
@@ -220,14 +237,14 @@ export function createBlackjackServer({
     response.json({ ok: true });
   });
 
-  app.get("/api/admin/overview", requireAdmin, (_request, response) => {
+  app.get("/api/admin/overview", requireAdmin, async (_request, response) => {
     response.json({
-      accounts: accounts.listAccounts(),
+      accounts: await accounts.listAccounts(),
       tables: registry.listTables().map((summary) => blackjackAdmin.getFullTableState(summary.tableId)),
     });
   });
 
-  app.patch("/api/admin/accounts/:username/balance", requireAdmin, (request, response) => {
+  app.patch("/api/admin/accounts/:username/balance", requireAdmin, async (request, response) => {
     try {
       const { username } = request.params;
       const { balance } = request.body ?? {};
@@ -236,19 +253,19 @@ export function createBlackjackServer({
         throw new Error("Balance must be a non-negative number.");
       }
 
-      if (!accounts.getAccount(username)) {
+      if (!await accounts.getAccount(username)) {
         throw new Error("Account not found.");
       }
 
-      accounts.updateBalance(username, parsedBalance);
+      await accounts.updateBalance(username, parsedBalance);
       blackjackAdmin.syncPlayerBalance(username, parsedBalance);
-      response.json({ ok: true, account: accounts.getAccount(username) });
+      response.json({ ok: true, account: await accounts.getAccount(username) });
     } catch (error) {
       response.status(400).json({ error: error.message });
     }
   });
 
-  app.post("/api/admin/accounts/adjust-all", requireAdmin, (request, response) => {
+  app.post("/api/admin/accounts/adjust-all", requireAdmin, async (request, response) => {
     try {
       const { delta } = request.body ?? {};
       const parsedDelta = Number.parseInt(delta, 10);
@@ -256,7 +273,7 @@ export function createBlackjackServer({
         throw new Error("Enter a non-zero whole number amount to apply.");
       }
 
-      const updated = accounts.adjustAllBalances(parsedDelta);
+      const updated = await accounts.adjustAllBalances(parsedDelta);
       for (const { username, balance } of updated) {
         blackjackAdmin.syncPlayerBalance(username, balance);
       }
@@ -267,22 +284,22 @@ export function createBlackjackServer({
     }
   });
 
-  app.post("/api/admin/accounts/:username/password", requireAdmin, (request, response) => {
+  app.post("/api/admin/accounts/:username/password", requireAdmin, async (request, response) => {
     try {
       const { username } = request.params;
       const { password } = request.body ?? {};
-      accounts.setPassword(username, password);
+      await accounts.setPassword(username, password);
       response.json({ ok: true });
     } catch (error) {
       response.status(400).json({ error: error.message });
     }
   });
 
-  app.delete("/api/admin/accounts/:username", requireAdmin, (request, response) => {
+  app.delete("/api/admin/accounts/:username", requireAdmin, async (request, response) => {
     try {
       const { username } = request.params;
-      blackjackAdmin.kickPlayerEverywhere(username);
-      if (!accounts.deleteAccount(username)) {
+      await blackjackAdmin.kickPlayerEverywhere(username);
+      if (!await accounts.deleteAccount(username)) {
         throw new Error("Account not found.");
       }
 
@@ -298,19 +315,19 @@ export function createBlackjackServer({
     });
   });
 
-  app.post("/api/admin/tables/:tableId/kick/:playerId", requireAdmin, (request, response) => {
+  app.post("/api/admin/tables/:tableId/kick/:playerId", requireAdmin, async (request, response) => {
     try {
       const { tableId, playerId } = request.params;
-      blackjackAdmin.kickPlayer(tableId, playerId);
+      await blackjackAdmin.kickPlayer(tableId, playerId);
       response.json({ ok: true });
     } catch (error) {
       response.status(400).json({ error: error.message });
     }
   });
 
-  app.post("/api/admin/tables/:tableId/reset", requireAdmin, (request, response) => {
+  app.post("/api/admin/tables/:tableId/reset", requireAdmin, async (request, response) => {
     try {
-      blackjackAdmin.resetTable(request.params.tableId);
+      await blackjackAdmin.resetTable(request.params.tableId);
       response.json({ ok: true });
     } catch (error) {
       response.status(400).json({ error: error.message });

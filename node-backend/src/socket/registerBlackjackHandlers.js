@@ -13,7 +13,7 @@ function emitTableError(socket, error) {
  * trusted client input. When `accounts`/`sessions` are omitted, the handlers fall back to the
  * legacy trusted-payload contract, which is only used by the internal unit test harness.
  */
-function resolveIdentity(payload, { accounts, sessions }) {
+async function resolveIdentity(payload, { accounts, sessions }) {
   const tableId = String(payload?.tableId ?? "").trim();
   if (!tableId) {
     throw new Error("tableId is required.");
@@ -30,7 +30,7 @@ function resolveIdentity(payload, { accounts, sessions }) {
       throw new Error("Your session has expired. Please log in again.");
     }
 
-    const account = accounts.getAccount(username);
+    const account = await accounts.getAccount(username);
     if (!account) {
       throw new Error("Account not found.");
     }
@@ -122,12 +122,12 @@ export function registerBlackjackHandlers({
     broadcastTablesSummary();
   };
 
-  const finalizePlayerRemoval = ({ tableId, playerId }) => {
+  const finalizePlayerRemoval = async ({ tableId, playerId }) => {
     if (accounts) {
       const outgoingTable = registry.getTable(tableId);
       const outgoingPlayer = outgoingTable?.players.find((player) => player.id === playerId);
       if (outgoingPlayer) {
-        accounts.updateBalance(playerId, outgoingPlayer.balance);
+        await accounts.updateBalance(playerId, outgoingPlayer.balance);
       }
     }
 
@@ -142,7 +142,7 @@ export function registerBlackjackHandlers({
   };
 
   io.on("connection", (socket) => {
-    const leaveCurrentTable = () => {
+    const leaveCurrentTable = async () => {
       const presence = socketPresence.get(socket.id);
       if (!presence) {
         return;
@@ -160,10 +160,10 @@ export function registerBlackjackHandlers({
 
       playerOwners.delete(presenceKey);
 
-      finalizePlayerRemoval(presence);
+      await finalizePlayerRemoval(presence);
     };
 
-    const scheduleDisconnectRemoval = () => {
+    const scheduleDisconnectRemoval = async () => {
       const presence = socketPresence.get(socket.id);
       if (!presence) {
         return;
@@ -181,7 +181,7 @@ export function registerBlackjackHandlers({
 
       playerOwners.delete(presenceKey);
 
-      finalizePlayerRemoval(presence);
+      await finalizePlayerRemoval(presence);
     };
 
     const broadcastTableState = (tableId, viewerPlayerId = null) => {
@@ -194,15 +194,15 @@ export function registerBlackjackHandlers({
 
     // Socket state stays outside the game engine.
     // The engine only knows about table/player state, which keeps it reusable for HTTP, bots, and tests.
-    socket.on("blackjack:join_table", (payload = {}, callback) => {
+    socket.on("blackjack:join_table", async (payload = {}, callback) => {
       try {
-        const { tableId, playerId, playerName, balance } = resolveIdentity(payload, { accounts, sessions });
+        const { tableId, playerId, playerName, balance } = await resolveIdentity(payload, { accounts, sessions });
         const presenceKey = getPresenceKey(tableId, playerId);
 
         if (socketPresence.has(socket.id)) {
           const current = socketPresence.get(socket.id);
           if (current.tableId !== tableId || current.playerId !== playerId) {
-            leaveCurrentTable();
+            await leaveCurrentTable();
           }
         }
 
@@ -239,14 +239,14 @@ export function registerBlackjackHandlers({
       }
     });
 
-    socket.on("blackjack:leave_table", (_payload = {}, callback) => {
+    socket.on("blackjack:leave_table", async (_payload = {}, callback) => {
       try {
         const presence = socketPresence.get(socket.id);
         if (!presence) {
           throw new Error("Socket is not seated at any table.");
         }
 
-        leaveCurrentTable();
+        await leaveCurrentTable();
         callback?.({ ok: true });
       } catch (error) {
         emitTableError(socket, error);
@@ -470,11 +470,11 @@ export function registerBlackjackHandlers({
     });
 
     socket.on("disconnect", () => {
-      scheduleDisconnectRemoval();
+      scheduleDisconnectRemoval().catch(() => {});
     });
   });
 
-  const kickPlayer = (tableId, playerId) => {
+  const kickPlayer = async (tableId, playerId) => {
     const table = registry.getTable(tableId);
     if (!table) {
       throw new Error("Table not found.");
@@ -498,10 +498,10 @@ export function registerBlackjackHandlers({
       playerOwners.delete(presenceKey);
     }
 
-    finalizePlayerRemoval({ tableId, playerId });
+    await finalizePlayerRemoval({ tableId, playerId });
   };
 
-  const resetTable = (tableId) => {
+  const resetTable = async (tableId) => {
     const table = registry.getTable(tableId);
     if (!table) {
       throw new Error("Table not found.");
@@ -509,15 +509,15 @@ export function registerBlackjackHandlers({
 
     const playerIds = table.players.map((player) => player.id);
     for (const playerId of playerIds) {
-      kickPlayer(tableId, playerId);
+      await kickPlayer(tableId, playerId);
     }
   };
 
-  const kickPlayerEverywhere = (playerId) => {
+  const kickPlayerEverywhere = async (playerId) => {
     for (const summary of registry.listTables()) {
       const table = registry.getTable(summary.tableId);
       if (table?.players.some((player) => player.id === playerId)) {
-        kickPlayer(summary.tableId, playerId);
+        await kickPlayer(summary.tableId, playerId);
       }
     }
   };

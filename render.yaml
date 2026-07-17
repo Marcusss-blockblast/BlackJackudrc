@@ -23,6 +23,8 @@ services:
         value: "7"
       - key: BLACKJACK_DISCONNECT_GRACE_MS
         value: "30000"
+      - key: BLACKJACK_DATABASE_URL
+        sync: false
       - key: BLACKJACK_STATE_FILE
         value: /opt/render/project/src/node-backend/data/table-state.json
       - key: BLACKJACK_ACCOUNTS_FILE

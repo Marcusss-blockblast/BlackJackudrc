@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: blackjack-backend
+    runtime: node
+    rootDir: node-backend
+    plan: starter
+    autoDeploy: true
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CORS_ORIGIN
+        sync: false
+      - key: BLACKJACK_NUM_DECKS
+        value: "1"
+      - key: BLACKJACK_MAX_SEATS
+        value: "7"
+      - key: BLACKJACK_DISCONNECT_GRACE_MS
+        value: "30000"
+      - key: BLACKJACK_STATE_FILE
+        value: /opt/render/project/src/node-backend/data/table-state.json

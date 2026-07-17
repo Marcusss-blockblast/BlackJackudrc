@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BlackJack Údrč</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div id="authGate" class="auth-gate is-visible">
+      <div class="auth-card panel">
+        <p class="eyebrow">Realtime Multiplayer Blackjack</p>
+        <h1>BlackJack Údrč</h1>
+        <p class="muted">Sign in or create a free account to sit down at the tables.</p>
+
+        <div class="auth-tabs">
+          <button type="button" id="authTabLogin" class="auth-tab is-active">Sign In</button>
+          <button type="button" id="authTabRegister" class="auth-tab">Create Account</button>
+        </div>
+
+        <form id="authForm" class="form-grid">
+          <label class="full-span">
+            <span>Username</span>
+            <input id="authUsernameInput" name="username" autocomplete="username" required />
+          </label>
+          <label class="full-span">
+            <span>Password</span>
+            <input id="authPasswordInput" name="password" type="password" autocomplete="current-password" required />
+          </label>
+          <label class="full-span" id="authConfirmField" hidden>
+            <span>Confirm Password</span>
+            <input id="authConfirmInput" name="confirmPassword" type="password" autocomplete="new-password" />
+          </label>
+          <div class="form-actions full-span">
+            <button type="submit" id="authSubmitButton" class="primary">Sign In</button>
+          </div>
+          <p id="authError" class="auth-error full-span" hidden></p>
+        </form>
+      </div>
+    </div>
+
+    <div class="app-shell">
+      <header class="topbar panel">
+        <button type="button" id="menuToggleButton" class="menu-toggle" aria-expanded="true" aria-controls="sideMenu">&#9776; Menu</button>
+        <div class="brand-line">
+          <p class="eyebrow">Realtime Multiplayer Blackjack</p>
+          <h1>BlackJack Údrč</h1>
+        </div>
+        <p id="roundSummary" class="round-summary-line">Pick one of the four open tables to sit down.</p>
+        <div class="topbar-actions">
+          <span id="connectionBadge" class="badge badge-offline">Disconnected</span>
+        </div>
+      </header>
+
+      <div class="main-grid">
+        <section class="panel dashboard-panel">
+          <div class="seat-hero-compact">
+            <div id="myAvatarChip" class="avatar-chip avatar-chip-lg">?</div>
+            <div class="seat-hero-text">
+              <p class="seat-player" id="mySeatHeroLabel">Not seated</p>
+              <p class="seat-subline">Table <strong id="myTableHeroLabel">-</strong></p>
+            </div>
+            <div class="seat-hero-stats">
+              <div class="mini-stat">
+                <span class="status-label">Session P/L</span>
+                <strong id="mySessionValue">-</strong>
+              </div>
+              <div class="mini-stat">
+                <span class="status-label">Players</span>
+                <strong id="myPlayersValue">-</strong>
+              </div>
+              <div class="mini-stat">
+                <span class="status-label">Phase</span>
+                <strong id="myPhaseValue">-</strong>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel table-panel">
+          <div class="table-topline">
+            <span id="phaseLabel" class="badge badge-phase">Phase: -</span>
+            <span id="currentPlayerLabel" class="turn-line">Current player: -</span>
+          </div>
+
+          <div class="table-felt">
+            <div class="felt-ring"></div>
+            <div id="resultBanner" class="result-banner">Join a table and place a bet to deal the first hand.</div>
+
+            <section class="dealer-zone zone-card">
+              <div class="zone-head">
+                <div>
+                  <p class="zone-kicker">House</p>
+                  <h2>Dealer</h2>
+                </div>
+                <p id="dealerValue" class="value-line">Value: -</p>
+              </div>
+              <div id="dealerCards" class="card-row dealer-row"></div>
+            </section>
+
+            <section class="players-zone">
+              <div id="playersList" class="players-grid"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="panel dock-panel">
+          <div class="dock-meta">
+            <div class="bet-row">
+              <label class="bet-field">
+                <span>Bet</span>
+                <input id="betInput" type="number" value="10" min="1" />
+              </label>
+              <button type="button" id="placeBetButton" class="primary">Place Bet</button>
+              <div class="bet-balance">
+                <span class="bet-balance-label">Remaining</span>
+                <strong id="betBalanceLabel" class="bet-balance-value">-</strong>
+              </div>
+            </div>
+            <p id="actionHint" class="muted">
+              Pick one of the 4 tables, then place a bet. Action buttons enable automatically on your turn.
+            </p>
+          </div>
+
+          <div class="dock-actions">
+            <button type="button" id="hitButton" class="primary accent">Hit</button>
+            <button type="button" id="standButton">Stand</button>
+            <button type="button" id="splitButton">Split</button>
+            <button type="button" id="doubleDownButton">Double Down</button>
+            <button type="button" id="insuranceButton">Take Insurance</button>
+            <button type="button" id="declineInsuranceButton">No Insurance</button>
+            <button type="button" id="surrenderButton">Surrender</button>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div id="menuBackdrop" class="menu-backdrop is-active"></div>
+    <aside id="sideMenu" class="side-menu panel is-open">
+      <div class="side-menu-head">
+        <h2>Player Menu</h2>
+        <button type="button" id="menuCloseButton">Close</button>
+      </div>
+
+      <section class="account-panel">
+        <div class="panel-head stack-head">
+          <div>
+            <h2>Account</h2>
+            <p class="muted">Signed in as <strong id="accountUsernameLabel">-</strong> <span class="account-divider">|</span> Balance <strong id="accountBalanceLabel">-</strong></p>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" id="leaveButton">Leave Current Table</button>
+          <button type="button" id="logoutButton">Log Out</button>
+        </div>
+      </section>
+
+      <section class="lobby-panel">
+        <div class="panel-head">
+          <h2>Live Lobby</h2>
+          <span class="muted">4 always-open tables</span>
+        </div>
+        <div id="quickTablesGrid" class="quick-tables-grid"></div>
+      </section>
+    </aside>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

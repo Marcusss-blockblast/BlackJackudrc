@@ -1,0 +1,222 @@
+{
+  "Dev": {
+    "balance": 3510,
+    "password": "",
+    "view": "alt",
+    "win_chance": 50,
+    "history": [
+      {
+        "ts": "2026-02-04 10:37:46",
+        "bet": 100,
+        "result": "lose",
+        "net": -100
+      },
+      {
+        "ts": "2026-02-04 10:37:49",
+        "bet": 100,
+        "result": "win",
+        "net": 100
+      },
+      {
+        "ts": "2026-02-04 10:37:51",
+        "bet": 100,
+        "result": "win",
+        "net": 100
+      },
+      {
+        "ts": "2026-02-04 10:37:52",
+        "bet": 100,
+        "result": "win",
+        "net": 100
+      },
+      {
+        "ts": "2026-02-04 10:37:56",
+        "bet": 100,
+        "result": "lose",
+        "net": -100
+      },
+      {
+        "ts": "2026-02-04 10:38:05",
+        "bet": 100,
+        "result": "win",
+        "net": 100
+      },
+      {
+        "ts": "2026-02-04 10:38:08",
+        "bet": 100,
+        "result": "lose",
+        "net": -100
+      },
+      {
+        "ts": "2026-02-04 10:38:11",
+        "bet": 100,
+        "result": "bust",
+        "net": -100
+      },
+      {
+        "ts": "2026-02-04 10:38:13",
+        "bet": 100,
+        "result": "bust",
+        "net": -100
+      },
+      {
+        "ts": "2026-02-04 10:38:15",
+        "bet": 100,
+        "result": "bust",
+        "net": -100
+      },
+      {
+        "ts": "2026-02-04 10:38:16",
+        "bet": 100,
+        "result": "lose",
+        "net": -100
+      },
+      {
+        "ts": "2026-02-04 10:38:18",
+        "bet": 100,
+        "result": "bust",
+        "net": -100
+      },
+      {
+        "ts": "2026-02-04 12:08:13",
+        "bet": 100,
+        "result": "lose",
+        "net": -100
+      },
+      {
+        "ts": "2026-02-04 12:08:17",
+        "bet": 100,
+        "result": "win",
+        "net": 100
+      },
+      {
+        "ts": "2026-02-12 11:08:12",
+        "bet": 1000,
+        "result": "blackjack",
+        "net": 1600
+      },
+      {
+        "ts": "2026-02-12 11:08:16",
+        "bet": 1000,
+        "result": "win",
+        "net": 1000
+      },
+      {
+        "ts": "2026-02-12 11:08:23",
+        "bet": 1000,
+        "result": "win",
+        "net": 1000
+      },
+      {
+        "ts": "2026-02-12 11:08:25",
+        "bet": 1000,
+        "result": "lose",
+        "net": -1000
+      },
+      {
+        "ts": "2026-02-12 11:08:28",
+        "bet": 1000,
+        "result": "bust",
+        "net": -1000
+      },
+      {
+        "ts": "2026-02-12 11:08:31",
+        "bet": 1000,
+        "result": "win",
+        "net": 1000
+      },
+      {
+        "ts": "2026-02-12 11:08:36",
+        "bet": 1000,
+        "result": "bust",
+        "net": -1000
+      },
+      {
+        "ts": "2026-02-12 11:08:46",
+        "bet": 1000,
+        "result": "blackjack",
+        "net": 1600
+      },
+      {
+        "ts": "2026-02-12 11:08:47",
+        "bet": 1000,
+        "result": "lose",
+        "net": -1000
+      },
+      {
+        "ts": "2026-02-12 11:08:49",
+        "bet": 1000,
+        "result": "win",
+        "net": 1000
+      },
+      {
+        "ts": "2026-02-12 11:08:56",
+        "bet": 1000,
+        "result": "bust",
+        "net": -1000
+      }
+    ],
+    "stats": {
+      "wins": 11,
+      "losses": 14,
+      "pushes": 0,
+      "surr": 0,
+      "played": 25,
+      "win_rate": 44.0,
+      "wl_ratio": 0.786,
+      "net": 1800,
+      "biggest_win": {
+        "ts": "2026-02-12 11:08:12",
+        "bet": 1000,
+        "result": "blackjack",
+        "net": 1600
+      },
+      "biggest_loss": {
+        "ts": "2026-02-12 11:08:25",
+        "bet": 1000,
+        "result": "lose",
+        "net": -1000
+      },
+      "updated_ts": "2026-02-12 11:08:58"
+    },
+    "beginner_mode": false,
+    "coach_level": "subtle",
+    "password_algo": "pbkdf2_sha256",
+    "password_salt": "whs8SnT6e4JX6re41kH5NA==",
+    "password_hash": "w6TCeRpqLFhmc3vGFJ7i8AdZ68Cugqkx0wd0IT8ku1Q=",
+    "password_iters": 200000
+  },
+  "m": {
+    "balance": 1000,
+    "password": "",
+    "view": "stack",
+    "win_chance": 50,
+    "history": [
+      {
+        "ts": "2026-02-02 13:30:37",
+        "bet": 100,
+        "result": "win",
+        "net": 100
+      },
+      {
+        "ts": "2026-02-02 13:31:10",
+        "bet": 100,
+        "result": "win",
+        "net": 100
+      },
+      {
+        "ts": "2026-02-02 13:31:27",
+        "bet": 100,
+        "result": "win",
+        "net": 100
+      }
+    ],
+    "stats": {},
+    "beginner_mode": false,
+    "coach_level": "off",
+    "password_algo": "pbkdf2_sha256",
+    "password_salt": "yDt8HVrEp//ctss+J4C6PA==",
+    "password_hash": "EOIzqEHeO0UxsnMl9MMX9eQlAapJ53FJjhEXnpvPaPA=",
+    "password_iters": 200000
+  }
+}

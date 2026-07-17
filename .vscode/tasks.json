@@ -1,0 +1,65 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "blackjack: npm install",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "install"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder:Blackjack Project}/node-backend"
+      }
+    },
+    {
+      "label": "blackjack: start server",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "start"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder:Blackjack Project}/node-backend"
+      },
+      "isBackground": true
+    },
+    {
+      "label": "blackjack: demo client",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "run",
+        "client:demo",
+        "--",
+        "--player",
+        "p1",
+        "--name",
+        "Alice",
+        "--table",
+        "practice",
+        "--bet",
+        "10",
+        "--start"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder:Blackjack Project}/node-backend"
+      }
+    },
+    {
+      "label": "blackjack: verify backend",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder:Blackjack Project}/verify-node-backend.ps1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder:Blackjack Project}"
+      }
+    }
+  ]
+}

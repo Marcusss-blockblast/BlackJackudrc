@@ -17,6 +17,7 @@ const state = {
   lastTablesFetchId: 0,
   lastAppliedTablesFetchId: 0,
   language: "en",
+  languageChosenManually: false,
 };
 
 function isMobileLayout() {
@@ -533,6 +534,7 @@ function applyAccount(account, token, lastTableId = null) {
     lastTableId: lastTableId ?? state.account?.lastTableId ?? null,
   };
   state.authenticated = true;
+  state.languageChosenManually = false;
   saveStoredAuth(state.account);
   updateAccountLabel();
   refreshAdminVisibility();
@@ -1134,6 +1136,8 @@ function setAuthMode(mode) {
 
 async function handleAuthSubmit(event) {
   event.preventDefault();
+  const selectedLanguageBeforeAuth = state.language;
+  const languageWasChosenManually = state.languageChosenManually;
   const username = elements.authUsernameInput.value.trim();
   const password = elements.authPasswordInput.value;
   elements.authError.hidden = true;
@@ -1160,6 +1164,10 @@ async function handleAuthSubmit(event) {
     });
 
     applyAccount(payload.account, payload.token, null);
+    if (languageWasChosenManually) {
+      setLanguage(selectedLanguageBeforeAuth, { persistAccount: true });
+      state.languageChosenManually = false;
+    }
     elements.authForm.reset();
     hideAuthGate();
     setMenuOpen(true);
@@ -1597,10 +1605,22 @@ async function handleAdminResetTable(tableId) {
 elements.authForm.addEventListener("submit", handleAuthSubmit);
 elements.authTabLogin.addEventListener("click", () => setAuthMode("login"));
 elements.authTabRegister.addEventListener("click", () => setAuthMode("register"));
-elements.langButtonEn?.addEventListener("click", () => setLanguage("en"));
-elements.langButtonCs?.addEventListener("click", () => setLanguage("cs"));
-elements.langButtonEnTop?.addEventListener("click", () => setLanguage("en"));
-elements.langButtonCsTop?.addEventListener("click", () => setLanguage("cs"));
+elements.langButtonEn?.addEventListener("click", () => {
+  state.languageChosenManually = !state.authenticated;
+  setLanguage("en");
+});
+elements.langButtonCs?.addEventListener("click", () => {
+  state.languageChosenManually = !state.authenticated;
+  setLanguage("cs");
+});
+elements.langButtonEnTop?.addEventListener("click", () => {
+  state.languageChosenManually = !state.authenticated;
+  setLanguage("en");
+});
+elements.langButtonCsTop?.addEventListener("click", () => {
+  state.languageChosenManually = !state.authenticated;
+  setLanguage("cs");
+});
 elements.logoutButton.addEventListener("click", handleLogout);
 elements.leaveButton.addEventListener("click", handleLeave);
 elements.placeBetButton.addEventListener("click", () => handleAction("blackjack:place_bet", { amount: Number.parseInt(elements.betInput.value, 10) }));

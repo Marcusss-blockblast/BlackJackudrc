@@ -46,7 +46,7 @@ function toPublicAccount(account) {
     role: account.role ?? "user",
     language: VALID_LANGUAGES.has(String(account.language ?? "").toLowerCase())
       ? String(account.language).toLowerCase()
-      : null,
+      : "en",
   };
 }
 
@@ -77,6 +77,9 @@ export class PostgresAccountStore {
 
     await this.pool.query("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';");
     await this.pool.query("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS language TEXT;");
+    await this.pool.query("UPDATE accounts SET language = 'en' WHERE language IS NULL OR language NOT IN ('en', 'cs');");
+    await this.pool.query("ALTER TABLE accounts ALTER COLUMN language SET DEFAULT 'en';");
+    await this.pool.query("ALTER TABLE accounts ALTER COLUMN language SET NOT NULL;");
     await this.pool.query("UPDATE accounts SET role = 'admin' WHERE username = 'dev';");
   }
 
@@ -105,7 +108,7 @@ export class PostgresAccountStore {
           VALUES ($1, $2, $3, $4, $5, $6)
           RETURNING username, display_name, balance, role, language, created_at;
         `,
-        [account.username, account.displayName, account.passwordHash, account.balance, account.role, null],
+        [account.username, account.displayName, account.passwordHash, account.balance, account.role, "en"],
       );
 
       return toPublicAccount(result.rows[0]);

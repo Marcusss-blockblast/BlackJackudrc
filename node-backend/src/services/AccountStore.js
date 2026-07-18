@@ -47,7 +47,7 @@ function toPublicAccount(account) {
     role: account.role ?? "user",
     language: VALID_LANGUAGES.has(String(account.language ?? "").toLowerCase())
       ? String(account.language).toLowerCase()
-      : null,
+      : "en",
   };
 }
 
@@ -85,6 +85,7 @@ export class AccountStore {
       balance: this.startingBalance,
       createdAt: new Date().toISOString(),
       role: normalized === "dev" ? "admin" : "user",
+      language: "en",
     };
 
     this.accounts.set(normalized, account);
@@ -213,6 +214,7 @@ export class AccountStore {
       const raw = fs.readFileSync(sourcePath, "utf8");
       const parsed = JSON.parse(raw);
       const entries = Array.isArray(parsed.accounts) ? parsed.accounts : [];
+      let shouldSave = false;
 
       for (const entry of entries) {
         if (!entry?.username) {
@@ -225,9 +227,12 @@ export class AccountStore {
           : entry.username === "dev"
             ? "admin"
             : "user";
-        entry.language = VALID_LANGUAGES.has(String(entry.language ?? "").toLowerCase())
-          ? String(entry.language).toLowerCase()
-          : null;
+        const normalizedLanguage = String(entry.language ?? "").toLowerCase();
+        const nextLanguage = VALID_LANGUAGES.has(normalizedLanguage) ? normalizedLanguage : "en";
+        if (entry.language !== nextLanguage) {
+          shouldSave = true;
+        }
+        entry.language = nextLanguage;
 
         this.accounts.set(entry.username, entry);
       }
@@ -235,10 +240,12 @@ export class AccountStore {
       const devAccount = this.accounts.get("dev");
       if (devAccount && devAccount.role !== "admin") {
         devAccount.role = "admin";
-        this.saveToDisk();
+        shouldSave = true;
       }
 
       if (sourcePath === this.seedPath && this.persistencePath && !fs.existsSync(this.persistencePath)) {
+        this.saveToDisk();
+      } else if (shouldSave) {
         this.saveToDisk();
       }
     } catch (error) {

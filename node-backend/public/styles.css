@@ -730,7 +730,7 @@ button.accent {
 
 .bet-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 136px auto;
+  grid-template-columns: minmax(0, 1.4fr) 112px auto;
   gap: 12px;
   align-items: end;
 }
@@ -745,8 +745,8 @@ button.accent {
 }
 
 .bet-row #placeBetButton {
-  width: 136px;
-  min-width: 136px;
+  width: 112px;
+  min-width: 112px;
 }
 
 .bet-balance {
@@ -1074,6 +1074,15 @@ button.accent {
   padding: 6px 8px;
 }
 
+.admin-role-select {
+  min-width: 90px;
+  border: 1px solid rgba(240, 215, 158, 0.2);
+  background: rgba(246, 237, 219, 0.08);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 6px 8px;
+}
+
 .admin-row-actions {
   display: flex;
   gap: 6px;
@@ -1392,7 +1401,7 @@ button.danger {
   }
 
   .bet-row #placeBetButton {
-    min-width: 96px;
+    min-width: 84px;
     padding: 8px 10px;
     font-size: 0.82rem;
   }

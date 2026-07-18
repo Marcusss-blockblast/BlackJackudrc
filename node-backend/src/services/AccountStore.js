@@ -6,6 +6,7 @@ const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
 const MIN_PASSWORD_LENGTH = 6;
 const DEFAULT_STARTING_BALANCE = 1000;
 const SCRYPT_KEYLEN = 64;
+const VALID_ROLES = new Set(["user", "admin"]);
 
 function normalizeUsername(username) {
   return String(username ?? "").trim().toLowerCase();
@@ -42,6 +43,7 @@ function toPublicAccount(account) {
     displayName: account.displayName,
     balance: account.balance,
     createdAt: account.createdAt,
+    role: account.role ?? "user",
   };
 }
 
@@ -78,6 +80,7 @@ export class AccountStore {
       passwordHash: hashPassword(String(password)),
       balance: this.startingBalance,
       createdAt: new Date().toISOString(),
+      role: normalized === "dev" ? "admin" : "user",
     };
 
     this.accounts.set(normalized, account);
@@ -133,6 +136,23 @@ export class AccountStore {
     return deleted;
   }
 
+  setRole(username, role) {
+    const normalized = normalizeUsername(username);
+    const normalizedRole = String(role ?? "").trim().toLowerCase();
+    if (!VALID_ROLES.has(normalizedRole)) {
+      throw new Error("Role must be either 'user' or 'admin'.");
+    }
+
+    const account = this.accounts.get(normalized);
+    if (!account) {
+      throw new Error("Account not found.");
+    }
+
+    account.role = normalizedRole;
+    this.saveToDisk();
+    return toPublicAccount(account);
+  }
+
   updateBalance(username, balance) {
     const normalized = normalizeUsername(username);
     const account = this.accounts.get(normalized);
@@ -179,8 +199,19 @@ export class AccountStore {
         }
 
         entry.balance = Math.max(0, Math.round(Number(entry.balance) || 0));
+        entry.role = VALID_ROLES.has(String(entry.role ?? "").toLowerCase())
+          ? String(entry.role).toLowerCase()
+          : entry.username === "dev"
+            ? "admin"
+            : "user";
 
         this.accounts.set(entry.username, entry);
+      }
+
+      const devAccount = this.accounts.get("dev");
+      if (devAccount && devAccount.role !== "admin") {
+        devAccount.role = "admin";
+        this.saveToDisk();
       }
 
       if (sourcePath === this.seedPath && this.persistencePath && !fs.existsSync(this.persistencePath)) {

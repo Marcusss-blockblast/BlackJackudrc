@@ -5,6 +5,7 @@ const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
 const MIN_PASSWORD_LENGTH = 6;
 const DEFAULT_STARTING_BALANCE = 1000;
 const SCRYPT_KEYLEN = 64;
+const VALID_ROLES = new Set(["user", "admin"]);
 
 function normalizeUsername(username) {
   return String(username ?? "").trim().toLowerCase();
@@ -41,6 +42,7 @@ function toPublicAccount(account) {
     displayName: account.display_name,
     balance: account.balance,
     createdAt: account.created_at ? new Date(account.created_at).toISOString() : null,
+    role: account.role ?? "user",
   };
 }
 
@@ -64,9 +66,13 @@ export class PostgresAccountStore {
         display_name TEXT NOT NULL,
         password_hash TEXT NOT NULL,
         balance INTEGER NOT NULL DEFAULT 0,
+        role TEXT NOT NULL DEFAULT 'user',
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
+
+    await this.pool.query("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';");
+    await this.pool.query("UPDATE accounts SET role = 'admin' WHERE username = 'dev';");
   }
 
   async register(username, password) {
@@ -84,16 +90,17 @@ export class PostgresAccountStore {
       displayName: String(username).trim(),
       passwordHash: hashPassword(String(password)),
       balance: this.startingBalance,
+      role: normalized === "dev" ? "admin" : "user",
     };
 
     try {
       const result = await this.pool.query(
         `
-          INSERT INTO accounts (username, display_name, password_hash, balance)
-          VALUES ($1, $2, $3, $4)
-          RETURNING username, display_name, balance, created_at;
+          INSERT INTO accounts (username, display_name, password_hash, balance, role)
+          VALUES ($1, $2, $3, $4, $5)
+          RETURNING username, display_name, balance, role, created_at;
         `,
-        [account.username, account.displayName, account.passwordHash, account.balance],
+        [account.username, account.displayName, account.passwordHash, account.balance, account.role],
       );
 
       return toPublicAccount(result.rows[0]);
@@ -110,7 +117,7 @@ export class PostgresAccountStore {
     const normalized = normalizeUsername(username);
     const result = await this.pool.query(
       `
-        SELECT username, display_name, password_hash, balance, created_at
+        SELECT username, display_name, password_hash, balance, role, created_at
         FROM accounts
         WHERE username = $1;
       `,
@@ -128,7 +135,7 @@ export class PostgresAccountStore {
   async getAccount(username) {
     const result = await this.pool.query(
       `
-        SELECT username, display_name, balance, created_at
+        SELECT username, display_name, balance, role, created_at
         FROM accounts
         WHERE username = $1;
       `,
@@ -141,7 +148,7 @@ export class PostgresAccountStore {
   async listAccounts() {
     const result = await this.pool.query(
       `
-        SELECT username, display_name, balance, created_at
+        SELECT username, display_name, balance, role, created_at
         FROM accounts
         ORDER BY username ASC;
       `,
@@ -167,6 +174,29 @@ export class PostgresAccountStore {
     if (result.rowCount === 0) {
       throw new Error("Account not found.");
     }
+  }
+
+  async setRole(username, role) {
+    const normalizedRole = String(role ?? "").trim().toLowerCase();
+    if (!VALID_ROLES.has(normalizedRole)) {
+      throw new Error("Role must be either 'user' or 'admin'.");
+    }
+
+    const result = await this.pool.query(
+      `
+        UPDATE accounts
+        SET role = $2
+        WHERE username = $1
+        RETURNING username, display_name, balance, role, created_at;
+      `,
+      [normalizeUsername(username), normalizedRole],
+    );
+
+    if (result.rowCount === 0) {
+      throw new Error("Account not found.");
+    }
+
+    return toPublicAccount(result.rows[0]);
   }
 
   async deleteAccount(username) {

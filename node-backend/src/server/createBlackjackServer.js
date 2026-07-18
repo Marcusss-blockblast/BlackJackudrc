@@ -145,6 +145,24 @@ export async function createBlackjackServer({
     next();
   };
 
+  const resolveAdminFromSessionToken = async (sessionToken) => {
+    const username = sessions.getUsername(sessionToken);
+    if (!username) {
+      throw new Error("Session expired. Please log in again.");
+    }
+
+    const account = await accounts.getAccount(username);
+    if (!account) {
+      throw new Error("Account not found.");
+    }
+
+    if (account.role !== "admin") {
+      throw new Error("Admin access is required.");
+    }
+
+    return account;
+  };
+
   app.use(express.json());
   app.use(express.static(publicDir));
 
@@ -231,14 +249,14 @@ export async function createBlackjackServer({
     response.sendFile(path.join(publicDir, "index.html"));
   });
 
-  app.post("/api/admin/login", (request, response) => {
-    const { password } = request.body ?? {};
-    if (String(password ?? "") !== String(adminPassword)) {
-      response.status(401).json({ error: "Incorrect admin password." });
-      return;
+  app.post("/api/admin/login", async (request, response) => {
+    try {
+      const { token: sessionToken } = request.body ?? {};
+      await resolveAdminFromSessionToken(sessionToken);
+      response.json({ token: createAdminToken() });
+    } catch (error) {
+      response.status(403).json({ error: error.message });
     }
-
-    response.json({ token: createAdminToken() });
   });
 
   app.post("/api/admin/logout", requireAdmin, (request, response) => {
@@ -300,6 +318,17 @@ export async function createBlackjackServer({
       const { password } = request.body ?? {};
       await accounts.setPassword(username, password);
       response.json({ ok: true });
+    } catch (error) {
+      response.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/admin/accounts/:username/role", requireAdmin, async (request, response) => {
+    try {
+      const { username } = request.params;
+      const { role } = request.body ?? {};
+      const updated = await accounts.setRole(username, role);
+      response.json({ ok: true, account: updated });
     } catch (error) {
       response.status(400).json({ error: error.message });
     }

@@ -28,6 +28,10 @@ function syncResponsiveShell() {
   document.body.classList.toggle("is-mobile-lobby", mobile && !state.joined);
 }
 
+function isCurrentUserAdmin() {
+  return state.account?.role === "admin";
+}
+
 const elements = {
   connectionBadge: document.querySelector("#connectionBadge"),
   mySeatHeroLabel: document.querySelector("#mySeatHeroLabel"),
@@ -190,19 +194,13 @@ function updateAccountLabel() {
 function updateBetBalanceLabel() {
   const me = getMe();
   const bankroll = Number.parseInt(me?.balance ?? state.account?.balance, 10);
-  const betAmount = Number.parseInt(elements.betInput.value, 10);
 
   if (!Number.isFinite(bankroll)) {
     elements.betBalanceLabel.textContent = "-";
     return;
   }
 
-  if (!Number.isFinite(betAmount) || betAmount <= 0) {
-    elements.betBalanceLabel.textContent = `${bankroll}`;
-    return;
-  }
-
-  elements.betBalanceLabel.textContent = `${Math.max(bankroll - betAmount, 0)}`;
+  elements.betBalanceLabel.textContent = `${bankroll}`;
 }
 
 function formatSessionDelta(value) {
@@ -236,11 +234,25 @@ function applyAccount(account, token, lastTableId = null) {
     username: account.username,
     displayName: account.displayName,
     balance: account.balance,
+    role: account.role ?? "user",
     lastTableId: lastTableId ?? state.account?.lastTableId ?? null,
   };
   state.authenticated = true;
   saveStoredAuth(state.account);
   updateAccountLabel();
+  refreshAdminVisibility();
+}
+
+function refreshAdminVisibility() {
+  const isAdmin = isCurrentUserAdmin();
+  elements.adminMenuButton.hidden = !isAdmin;
+
+  if (!isAdmin) {
+    closeAdminPanel();
+    closeAdminGate();
+    adminToken = null;
+    saveStoredAdminToken(null);
+  }
 }
 
 async function fetchJson(url, options) {
@@ -598,7 +610,7 @@ function updateSeatSummary(me) {
   elements.myTableHeroLabel.textContent = displayTable;
   elements.myAvatarChip.style.background = getAvatarColor(avatarSourceId);
   elements.myAvatarChip.textContent = getInitials(avatarSourceName);
-  elements.roundSummary.textContent = getRoundSummary(state.currentState, me);
+  elements.roundSummary.textContent = state.joined ? "" : getRoundSummary(state.currentState, me);
 
   if (me) {
     syncTableSessionBaseline(me);
@@ -620,6 +632,7 @@ function updateSeatSummary(me) {
     state.account = {
       ...state.account,
       balance: Number.parseInt(me.balance, 10) || state.account.balance,
+      role: me.role ?? state.account.role,
       lastTableId: state.currentState?.tableId ?? state.account.lastTableId,
     };
     saveStoredAuth(state.account);
@@ -883,6 +896,7 @@ async function handleLogout() {
   state.currentState = null;
   clearTableSessionBaseline();
   updateAccountLabel();
+  refreshAdminVisibility();
   renderState(defaultState());
   syncResponsiveShell();
   showAuthGate();
@@ -984,9 +998,6 @@ async function adminFetchJson(url, options = {}) {
     adminToken = null;
     saveStoredAdminToken(null);
     closeAdminPanel();
-    openAdminGate();
-    elements.adminLoginError.textContent = payload.error ?? "Admin session expired. Please log in again.";
-    elements.adminLoginError.hidden = false;
     throw new Error(payload.error ?? "Admin session expired.");
   }
 
@@ -997,29 +1008,45 @@ async function adminFetchJson(url, options = {}) {
   return payload;
 }
 
-function handleAdminMenuButtonClick() {
+async function ensureAdminSession() {
   if (adminToken) {
-    openAdminPanel();
     return;
   }
 
-  openAdminGate();
+  if (!state.account?.token) {
+    throw new Error("Sign in again before opening admin tools.");
+  }
+
+  const payload = await fetchJson("/api/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token: state.account.token }),
+  });
+
+  adminToken = payload.token;
+  saveStoredAdminToken(adminToken);
+}
+
+async function handleAdminMenuButtonClick() {
+  if (!isCurrentUserAdmin()) {
+    window.alert("Admin role is required for this panel.");
+    return;
+  }
+
+  try {
+    await ensureAdminSession();
+    openAdminPanel();
+  } catch (error) {
+    window.alert(`Unable to open admin panel: ${error.message}`);
+  }
 }
 
 async function handleAdminLoginSubmit(event) {
   event.preventDefault();
-  const password = elements.adminPasswordInput.value;
   elements.adminLoginError.hidden = true;
 
   try {
-    const payload = await fetchJson("/api/admin/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
-    });
-
-    adminToken = payload.token;
-    saveStoredAdminToken(adminToken);
+    await ensureAdminSession();
     closeAdminGate();
     openAdminPanel();
   } catch (error) {
@@ -1056,7 +1083,7 @@ function renderAdminAccounts(accountsList) {
   elements.adminAccountsBody.innerHTML = "";
 
   if (accountsList.length === 0) {
-    elements.adminAccountsBody.innerHTML = '<tr><td colspan="5" class="empty-state">No accounts yet.</td></tr>';
+    elements.adminAccountsBody.innerHTML = '<tr><td colspan="6" class="empty-state">No accounts yet.</td></tr>';
     return;
   }
 
@@ -1066,10 +1093,17 @@ function renderAdminAccounts(accountsList) {
     row.innerHTML = `
       <td>${escapeHtml(account.username)}</td>
       <td>${escapeHtml(account.displayName)}</td>
+      <td>
+        <select class="admin-role-select">
+          <option value="user" ${account.role === "user" ? "selected" : ""}>User</option>
+          <option value="admin" ${account.role === "admin" ? "selected" : ""}>Admin</option>
+        </select>
+      </td>
       <td><input type="number" min="0" class="admin-balance-input" value="${escapeHtml(String(account.balance))}" /></td>
       <td>${escapeHtml(createdLabel)}</td>
       <td class="admin-row-actions">
         <button type="button" class="admin-save-balance">Save</button>
+        <button type="button" class="admin-set-role">Set Role</button>
         <button type="button" class="admin-set-password">Set Password</button>
         <button type="button" class="admin-delete-account danger">Delete</button>
       </td>
@@ -1078,9 +1112,25 @@ function renderAdminAccounts(accountsList) {
     row.querySelector(".admin-save-balance").addEventListener("click", () => {
       handleAdminSaveBalance(account.username, row.querySelector(".admin-balance-input"));
     });
+    row.querySelector(".admin-set-role").addEventListener("click", () => {
+      handleAdminSetRole(account.username, row.querySelector(".admin-role-select").value);
+    });
     row.querySelector(".admin-set-password").addEventListener("click", () => handleAdminSetPassword(account.username));
     row.querySelector(".admin-delete-account").addEventListener("click", () => handleAdminDeleteAccount(account.username));
     elements.adminAccountsBody.append(row);
+  }
+}
+
+async function handleAdminSetRole(username, role) {
+  try {
+    await adminFetchJson(`/api/admin/accounts/${encodeURIComponent(username)}/role`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role }),
+    });
+    await refreshAdminData();
+  } catch (error) {
+    window.alert(`Failed to set role: ${error.message}`);
   }
 }
 
@@ -1358,6 +1408,7 @@ async function bootstrap() {
   setConnection(false);
   syncResponsiveShell();
   updateBetBalanceLabel();
+  refreshAdminVisibility();
 
   const stored = loadStoredAuth();
   if (!stored?.token) {
@@ -1380,6 +1431,8 @@ async function bootstrap() {
 
   } catch {
     clearStoredAuth();
+    state.account = null;
+    refreshAdminVisibility();
     showAuthGate();
     await refreshTables();
   }

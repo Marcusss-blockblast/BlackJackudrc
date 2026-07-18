@@ -1,5 +1,6 @@
 const AUTH_STORE_KEY = "blackjack-browser-client:auth:v1";
 const ADMIN_TOKEN_KEY = "blackjack-browser-client:admin:v1";
+const LANGUAGE_STORE_KEY = "blackjack-browser-client:lang:v1";
 const OPEN_TABLE_IDS = ["table-1", "table-2", "table-3", "table-4"];
 const socket = io();
 
@@ -15,6 +16,7 @@ const state = {
   tables: [],
   lastTablesFetchId: 0,
   lastAppliedTablesFetchId: 0,
+  language: "en",
 };
 
 function isMobileLayout() {
@@ -52,6 +54,10 @@ const elements = {
   authConfirmInput: document.querySelector("#authConfirmInput"),
   authError: document.querySelector("#authError"),
   authSubmitButton: document.querySelector("#authSubmitButton"),
+  langButtonEn: document.querySelector("#langButtonEn"),
+  langButtonCs: document.querySelector("#langButtonCs"),
+  langButtonEnTop: document.querySelector("#langButtonEnTop"),
+  langButtonCsTop: document.querySelector("#langButtonCsTop"),
   accountUsernameLabel: document.querySelector("#accountUsernameLabel"),
   accountBalanceLabel: document.querySelector("#accountBalanceLabel"),
   logoutButton: document.querySelector("#logoutButton"),
@@ -93,6 +99,294 @@ const elements = {
   adminBulkDeltaInput: document.querySelector("#adminBulkDeltaInput"),
   adminBulkApplyButton: document.querySelector("#adminBulkApplyButton"),
 };
+
+const translations = {
+  en: {
+    authSubtitle: "Sign in or create a free account to sit down at the tables.",
+    authTabLogin: "Sign In",
+    authTabRegister: "Create Account",
+    authUsernameLabel: "Username",
+    authPasswordLabel: "Password",
+    authConfirmLabel: "Confirm Password",
+    authSubmitLogin: "Sign In",
+    authSubmitRegister: "Create Account",
+    authRequiredFields: "Username and password are required.",
+    authPasswordsMismatch: "Passwords do not match.",
+    connectionConnected: "Connected",
+    connectionDisconnected: "Disconnected",
+    removedFromTable: "You were removed from the table. Pick a new seat from the lobby.",
+    signInToPlay: "Sign in to start playing.",
+    pickTableFromLobby: "Pick a table from the lobby to sit down.",
+    playersReady: "{count} {playerWord} ready. Deal when everyone is set.",
+    placeBetToOpenRound: "Place a bet to open the round.",
+    yourMove: "Your move{handLabel}. Hit, stand, split, double down, or surrender.",
+    handPosition: " on hand {current} of {total}",
+    waitingForPlayer: "Waiting for {name} to act{handLabel}.",
+    playerActionInProgress: "Player action in progress.",
+    insurancePrompt: "Dealer shows an ace. Take insurance for {amount} or pass.",
+    waitingInsuranceResponse: "Waiting for {name} to respond to insurance.",
+    resolvingInsuranceOffers: "Resolving insurance offers.",
+    dealerDrawing: "Dealer is drawing out the hand.",
+    roundCompleteNet: "{result}. Net {net}.",
+    roundCompletePlaceBets: "Round complete. Place bets for the next hand.",
+    takeSeatPrompt: "Take a seat and get the table moving.",
+    noCardsDealtYet: "No cards dealt yet",
+    noPlayersSeated: "No players seated yet. Open this page in a second browser to play multiplayer locally.",
+    playerOnline: "Online",
+    playerOffline: "Offline",
+    yourTurn: "Your turn",
+    currentTurn: "Current turn",
+    youSuffix: " (You)",
+    balanceShort: "Balance {value}",
+    handCountShort: "{count} {handWord}",
+    activeShort: "Active {index}",
+    waitingForOutcome: "Waiting for outcome",
+    resultLabel: "Result {result} ({net})",
+    handLabel: "Hand {index}",
+    betLabelWord: "Bet",
+    valueLabelWord: "Value",
+    insuranceLabelWord: "Insurance",
+    insuranceAvailable: "available",
+    tablePlayersSeated: "{phase} · {count} {playerWord} seated",
+    playingHere: "Playing Here",
+    sitHere: "Sit Here",
+    notSeated: "Not seated",
+    phasePrefix: "Phase",
+    currentPlayerPrefix: "Current player",
+    valuePrefix: "Value",
+    authHintJoin: "Sign in, then click Sit Here in the 4-table lobby.",
+    authHintLobby: "You are at the lobby. Click Sit Here to join a table again.",
+    yourTurnActions: "Your turn. You can {actions}.",
+    insuranceWindow: "Insurance window. Take insurance for {amount} or choose no insurance.",
+    roundAutoStart: "Round starts automatically once every seated player has placed a bet.",
+    waitingGeneric: "Waiting for another player, more bets, or the dealer to resolve the hand.",
+    actionHitWord: "hit",
+    actionStandWord: "stand",
+    actionSplitWord: "split",
+    actionDoubleDownWord: "double down",
+    actionSurrenderWord: "surrender",
+    betLabel: "Bet",
+    placeBet: "Place Bet",
+    remainingLabel: "Remaining",
+    actionHit: "Hit",
+    actionStand: "Stand",
+    actionSplit: "Split",
+    actionDoubleDown: "Double Down",
+    actionTakeInsurance: "Take Insurance",
+    actionNoInsurance: "No Insurance",
+    actionSurrender: "Surrender",
+    playerMenuTitle: "Player Menu",
+    closeButton: "Close",
+    signedInAs: "Signed in as",
+    balanceLabel: "Balance",
+    leaveTable: "Leave Current Table",
+    logOut: "Log Out",
+    liveLobbyTitle: "Live Lobby",
+    openTablesSubtitle: "4 always-open tables",
+    adminPanel: "Admin Panel",
+  },
+  cs: {
+    authSubtitle: "Přihlaste se nebo si vytvořte bezplatný účet a usedněte ke stolu.",
+    authTabLogin: "Přihlášení",
+    authTabRegister: "Vytvořit účet",
+    authUsernameLabel: "Uživatelské jméno",
+    authPasswordLabel: "Heslo",
+    authConfirmLabel: "Potvrdit heslo",
+    authSubmitLogin: "Přihlásit se",
+    authSubmitRegister: "Vytvořit účet",
+    authRequiredFields: "Uživatelské jméno a heslo jsou povinné.",
+    authPasswordsMismatch: "Hesla se neshodují.",
+    connectionConnected: "Připojeno",
+    connectionDisconnected: "Odpojeno",
+    removedFromTable: "Byli jste odebráni od stolu. Vyberte si v lobby nové místo.",
+    signInToPlay: "Pro začátek hry se přihlaste.",
+    pickTableFromLobby: "Vyberte si v lobby stůl a usaďte se.",
+    playersReady: "Připraveno: {count} {playerWord}. Rozdejte, až budou všichni připraveni.",
+    placeBetToOpenRound: "Pro zahájení kola vložte sázku.",
+    yourMove: "Jste na tahu{handLabel}. Můžete hit, stand, split, double down nebo surrender.",
+    handPosition: " na ruce {current} z {total}",
+    waitingForPlayer: "Čeká se na tah hráče {name}{handLabel}.",
+    playerActionInProgress: "Probíhá tah hráče.",
+    insurancePrompt: "Dealer má eso. Zvolte insurance za {amount}, nebo ji odmítněte.",
+    waitingInsuranceResponse: "Čeká se na odpověď hráče {name} ohledně insurance.",
+    resolvingInsuranceOffers: "Vyhodnocuje se insurance.",
+    dealerDrawing: "Dealer dobírá karty.",
+    roundCompleteNet: "{result}. Čistý výsledek {net}.",
+    roundCompletePlaceBets: "Kolo skončilo. Vložte sázky do další hry.",
+    takeSeatPrompt: "Usaďte se a rozjeďte hru.",
+    noCardsDealtYet: "Zatím nebyly rozdány žádné karty",
+    noPlayersSeated: "Zatím nikdo nesedí u stolu. Otevřete stránku v druhém prohlížeči a vyzkoušejte multiplayer lokálně.",
+    playerOnline: "Online",
+    playerOffline: "Offline",
+    yourTurn: "Jste na tahu",
+    currentTurn: "Aktuální tah",
+    youSuffix: " (Vy)",
+    balanceShort: "Zůstatek {value}",
+    handCountShort: "{count} {handWord}",
+    activeShort: "Aktivní {index}",
+    waitingForOutcome: "Čeká se na výsledek",
+    resultLabel: "Výsledek {result} ({net})",
+    handLabel: "Ruka {index}",
+    betLabelWord: "Sázka",
+    valueLabelWord: "Hodnota",
+    insuranceLabelWord: "Insurance",
+    insuranceAvailable: "k dispozici",
+    tablePlayersSeated: "{phase} · usazeno {count} {playerWord}",
+    playingHere: "Hrajete zde",
+    sitHere: "Sednout zde",
+    notSeated: "Neusazen",
+    phasePrefix: "Fáze",
+    currentPlayerPrefix: "Hráč na tahu",
+    valuePrefix: "Hodnota",
+    authHintJoin: "Přihlaste se a pak v lobby se 4 stoly klikněte na Sednout zde.",
+    authHintLobby: "Jste v lobby. Klikněte na Sednout zde a znovu se připojte ke stolu.",
+    yourTurnActions: "Jste na tahu. Můžete: {actions}.",
+    insuranceWindow: "Okno insurance. Zvolte insurance za {amount}, nebo bez insurance.",
+    roundAutoStart: "Kolo začne automaticky, jakmile všichni usazení hráči vloží sázku.",
+    waitingGeneric: "Čeká se na dalšího hráče, další sázky nebo vyhodnocení dealera.",
+    actionHitWord: "hit",
+    actionStandWord: "stand",
+    actionSplitWord: "split",
+    actionDoubleDownWord: "double down",
+    actionSurrenderWord: "surrender",
+    betLabel: "Sázka",
+    placeBet: "Vsadit",
+    remainingLabel: "Zbývá",
+    actionHit: "Hit",
+    actionStand: "Stand",
+    actionSplit: "Split",
+    actionDoubleDown: "Double Down",
+    actionTakeInsurance: "Insurance",
+    actionNoInsurance: "Bez Insurance",
+    actionSurrender: "Surrender",
+    playerMenuTitle: "Menu hráče",
+    closeButton: "Zavřít",
+    signedInAs: "Přihlášen jako",
+    balanceLabel: "Zůstatek",
+    leaveTable: "Opustit aktuální stůl",
+    logOut: "Odhlásit se",
+    liveLobbyTitle: "Živá lobby",
+    openTablesSubtitle: "4 stále otevřené stoly",
+    adminPanel: "Admin panel",
+  },
+};
+
+function t(key, replacements = {}) {
+  const dictionary = translations[state.language] ?? translations.en;
+  const fallback = translations.en;
+  const template = dictionary[key] ?? fallback[key] ?? key;
+
+  return String(template).replace(/\{(\w+)\}/g, (_, token) => String(replacements[token] ?? `{${token}}`));
+}
+
+function getPlayerWord(count) {
+  if (state.language === "cs") {
+    if (count === 1) {
+      return "hráč";
+    }
+    if (count >= 2 && count <= 4) {
+      return "hráči";
+    }
+    return "hráčů";
+  }
+
+  return count === 1 ? "player" : "players";
+}
+
+function getHandWord(count) {
+  if (state.language === "cs") {
+    if (count === 1) {
+      return "ruka";
+    }
+    if (count >= 2 && count <= 4) {
+      return "ruce";
+    }
+    return "rukou";
+  }
+
+  return count === 1 ? "hand" : "hands";
+}
+
+function loadStoredLanguage() {
+  try {
+    const value = window.localStorage.getItem(LANGUAGE_STORE_KEY);
+    return value === "cs" ? "cs" : "en";
+  } catch {
+    return "en";
+  }
+}
+
+function saveStoredLanguage(language) {
+  try {
+    window.localStorage.setItem(LANGUAGE_STORE_KEY, language);
+  } catch {
+    // Ignore storage errors.
+  }
+}
+
+function updateLanguageButtons() {
+  const isEnglish = state.language === "en";
+  elements.langButtonEn?.classList.toggle("is-active", isEnglish);
+  elements.langButtonCs?.classList.toggle("is-active", !isEnglish);
+  elements.langButtonEnTop?.classList.toggle("is-active", isEnglish);
+  elements.langButtonCsTop?.classList.toggle("is-active", !isEnglish);
+}
+
+function applyStaticTranslations() {
+  document.querySelectorAll("[data-i18n]").forEach((node) => {
+    const key = node.dataset.i18n;
+    if (!key) {
+      return;
+    }
+
+    node.textContent = t(key);
+  });
+}
+
+async function persistLanguagePreference(language) {
+  if (!state.authenticated || !state.account?.token) {
+    return;
+  }
+
+  try {
+    const payload = await fetchJson("/api/auth/language", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: state.account.token, language }),
+    });
+
+    if (payload?.account && state.account) {
+      state.account = {
+        ...state.account,
+        language: payload.account.language ?? state.account.language ?? null,
+      };
+      saveStoredAuth(state.account);
+    }
+  } catch (error) {
+    logLine(`Unable to save language preference: ${error.message}`);
+  }
+}
+
+function setLanguage(language, { persistAccount = true } = {}) {
+  state.language = language === "cs" ? "cs" : "en";
+  saveStoredLanguage(state.language);
+  if (state.account) {
+    state.account = {
+      ...state.account,
+      language: state.language,
+    };
+    saveStoredAuth(state.account);
+  }
+  updateLanguageButtons();
+  applyStaticTranslations();
+  setAuthMode(state.authMode);
+  renderState(state.currentState ?? defaultState());
+  updateActionState();
+
+  if (persistAccount) {
+    persistLanguagePreference(state.language);
+  }
+}
 
 function defaultState() {
   return {
@@ -235,12 +529,16 @@ function applyAccount(account, token, lastTableId = null) {
     displayName: account.displayName,
     balance: account.balance,
     role: account.role ?? "user",
+    language: account.language ?? null,
     lastTableId: lastTableId ?? state.account?.lastTableId ?? null,
   };
   state.authenticated = true;
   saveStoredAuth(state.account);
   updateAccountLabel();
   refreshAdminVisibility();
+
+  const accountLanguage = account.language === "cs" ? "cs" : "en";
+  setLanguage(accountLanguage, { persistAccount: false });
 }
 
 function refreshAdminVisibility() {
@@ -343,7 +641,7 @@ function logLine(message, detail = null) {
 }
 
 function setConnection(connected) {
-  elements.connectionBadge.textContent = connected ? "Connected" : "Disconnected";
+  elements.connectionBadge.textContent = connected ? t("connectionConnected") : t("connectionDisconnected");
   elements.connectionBadge.className = connected ? "badge badge-online" : "badge badge-offline";
 }
 
@@ -369,66 +667,71 @@ function getPlayerById(playerId) {
 
 function getRoundSummary(nextState = state.currentState, me = getMe()) {
   if (!state.joined && state.authenticated && !nextState) {
-    return "You were removed from the table. Pick a new seat from the lobby.";
+    return t("removedFromTable");
   }
 
   if (!state.joined || !nextState) {
     if (!state.authenticated) {
-      return "Sign in to start playing.";
+      return t("signInToPlay");
     }
 
-    return "Pick a table from the lobby to sit down.";
+    return t("pickTableFromLobby");
   }
 
   if (nextState.phase === "waiting_for_bets") {
     const readyPlayers = nextState.players.filter((player) => player.currentBet > 0).length;
     return readyPlayers > 0
-      ? `${readyPlayers} player${readyPlayers === 1 ? "" : "s"} ready. Deal when everyone is set.`
-      : "Place a bet to open the round.";
+      ? t("playersReady", { count: readyPlayers, playerWord: getPlayerWord(readyPlayers) })
+      : t("placeBetToOpenRound");
   }
 
   if (nextState.phase === "player_turns") {
     if (me?.canAct) {
       const activeHand = getActiveHandEntry(me);
-      const handLabel = me.handCount > 1 ? ` on hand ${Number(activeHand?.index ?? 0) + 1} of ${me.handCount}` : "";
-      return `Your move${handLabel}. Hit, stand, split, double down, or surrender.`;
+      const handLabel = me.handCount > 1
+        ? t("handPosition", { current: Number(activeHand?.index ?? 0) + 1, total: me.handCount })
+        : "";
+      return t("yourMove", { handLabel });
     }
 
     const actingPlayer = getPlayerById(nextState.currentPlayerId);
     const handLabel = actingPlayer && nextState.currentHandIndex !== null && nextState.currentHandIndex !== undefined && actingPlayer.handCount > 1
-      ? ` on hand ${nextState.currentHandIndex + 1} of ${actingPlayer.handCount}`
+      ? t("handPosition", { current: nextState.currentHandIndex + 1, total: actingPlayer.handCount })
       : "";
     return actingPlayer
-      ? `Waiting for ${actingPlayer.name} to act${handLabel}.`
-      : "Player action in progress.";
+      ? t("waitingForPlayer", { name: actingPlayer.name, handLabel })
+      : t("playerActionInProgress");
   }
 
   if (nextState.phase === "insurance") {
     if (me?.canAct) {
       const activeHand = getActiveHandEntry(me);
       const insuranceAmount = activeHand ? Math.floor(Number(activeHand.currentBet) / 2) : 0;
-      return `Dealer shows an ace. Take insurance for ${insuranceAmount} or pass.`;
+      return t("insurancePrompt", { amount: insuranceAmount });
     }
 
     const actingPlayer = getPlayerById(nextState.currentPlayerId);
     return actingPlayer
-      ? `Waiting for ${actingPlayer.name} to respond to insurance.`
-      : "Resolving insurance offers.";
+      ? t("waitingInsuranceResponse", { name: actingPlayer.name })
+      : t("resolvingInsuranceOffers");
   }
 
   if (nextState.phase === "dealer_turn") {
-    return "Dealer is drawing out the hand.";
+    return t("dealerDrawing");
   }
 
   if (nextState.phase === "round_complete") {
     if (me?.lastPayout) {
-      return `${formatResult(me.lastPayout.result)}. Net ${me.lastPayout.net >= 0 ? "+" : ""}${me.lastPayout.net}.`;
+      return t("roundCompleteNet", {
+        result: formatResult(me.lastPayout.result),
+        net: `${me.lastPayout.net >= 0 ? "+" : ""}${me.lastPayout.net}`,
+      });
     }
 
-    return "Round complete. Place bets for the next hand.";
+    return t("roundCompletePlaceBets");
   }
 
-  return "Take a seat and get the table moving.";
+  return t("takeSeatPrompt");
 }
 
 function renderCards(container, cards = []) {
@@ -437,7 +740,7 @@ function renderCards(container, cards = []) {
   if (cards.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty-state";
-    empty.textContent = "No cards dealt yet";
+    empty.textContent = t("noCardsDealtYet");
     container.append(empty);
     return;
   }
@@ -459,7 +762,7 @@ function renderPlayers(players = []) {
   elements.playersList.innerHTML = "";
 
   if (players.length === 0) {
-    elements.playersList.innerHTML = '<div class="empty-state">No players seated yet. Open this page in a second browser to play multiplayer locally.</div>';
+    elements.playersList.innerHTML = `<div class="empty-state">${escapeHtml(t("noPlayersSeated"))}</div>`;
     return;
   }
 
@@ -468,27 +771,27 @@ function renderPlayers(players = []) {
     const isOffline = player.connectionState === "disconnected";
     card.className = `player-card${player.isViewer ? " is-you" : ""}${player.canAct ? " is-current" : ""}${isOffline ? " is-offline" : ""}`;
     const connectionClass = player.isConnected ? "online" : "offline";
-    const connectionLabel = player.isConnected ? "Online" : "Offline";
+    const connectionLabel = player.isConnected ? t("playerOnline") : t("playerOffline");
     const turnLabel = player.canAct
       ? player.isViewer
-        ? "Your turn"
-        : "Current turn"
+        ? t("yourTurn")
+        : t("currentTurn")
       : formatResult(player.status);
     const handEntries = getHandEntries(player);
 
     card.innerHTML = `
       <div class="player-head">
         <div class="avatar-chip" style="background:${getAvatarColor(player.id)}">${escapeHtml(getInitials(player.name))}</div>
-        <strong class="player-name">${escapeHtml(player.name)}${player.isViewer ? " (You)" : ""}</strong>
+        <strong class="player-name">${escapeHtml(player.name)}${player.isViewer ? escapeHtml(t("youSuffix")) : ""}</strong>
         <div class="player-tags">
           <span class="mini-badge ${player.canAct ? "turn" : ""}">${escapeHtml(turnLabel)}</span>
           <span class="mini-badge ${connectionClass}">${escapeHtml(connectionLabel)}</span>
         </div>
       </div>
       <div class="player-summary">
-        <span>Balance ${player.balance}</span>
-        <span>${handEntries.length} hand${handEntries.length === 1 ? "" : "s"}</span>
-        <span>Active ${Number(player.activeHandIndex ?? 0) + 1}</span>
+        <span>${escapeHtml(t("balanceShort", { value: player.balance }))}</span>
+        <span>${escapeHtml(t("handCountShort", { count: handEntries.length, handWord: getHandWord(handEntries.length) }))}</span>
+        <span>${escapeHtml(t("activeShort", { index: Number(player.activeHandIndex ?? 0) + 1 }))}</span>
       </div>
       <div class="hand-stack"></div>
     `;
@@ -498,22 +801,25 @@ function renderPlayers(players = []) {
       const handBlock = document.createElement("section");
       handBlock.className = `hand-block${handEntry.isActive ? " is-active" : ""}`;
       const resultLabel = handEntry.lastPayout
-        ? `Result ${formatResult(handEntry.lastPayout.result)} (${handEntry.lastPayout.net >= 0 ? "+" : ""}${handEntry.lastPayout.net})`
+        ? t("resultLabel", {
+          result: formatResult(handEntry.lastPayout.result),
+          net: `${handEntry.lastPayout.net >= 0 ? "+" : ""}${handEntry.lastPayout.net}`,
+        })
         : handEntry.roundResult
           ? formatResult(handEntry.roundResult)
-          : "Waiting for outcome";
+          : t("waitingForOutcome");
       const insuranceLabel = handEntry.insuranceStatus === "available"
-        ? `Insurance ${handEntry.insuranceBet ? `(${handEntry.insuranceBet})` : "available"}`
+        ? `${t("insuranceLabelWord")} ${handEntry.insuranceBet ? `(${handEntry.insuranceBet})` : t("insuranceAvailable")}`
         : "";
       handBlock.innerHTML = `
         <div class="hand-head">
-          <strong>Hand ${handEntry.index + 1}</strong>
+          <strong>${escapeHtml(t("handLabel", { index: handEntry.index + 1 }))}</strong>
           <span class="mini-badge ${handEntry.isActive && player.canAct ? "turn" : ""}">${escapeHtml(formatResult(handEntry.status))}</span>
         </div>
         <div class="hand-meta">
-          <span class="hand-metric"><span class="hand-metric-label">Bet</span><strong class="hand-metric-value">${escapeHtml(String(handEntry.currentBet ?? 0))}</strong></span>
-          <span class="hand-metric"><span class="hand-metric-label">Value</span><strong class="hand-metric-value">${escapeHtml(formatHandValue(handEntry.hand))}</strong></span>
-          ${insuranceLabel ? `<span class="hand-metric hand-metric-insurance"><span class="hand-metric-label">Insurance</span><strong class="hand-metric-value">${escapeHtml(insuranceLabel.replace(/^Insurance\s*/, ""))}</strong></span>` : ""}
+          <span class="hand-metric"><span class="hand-metric-label">${escapeHtml(t("betLabelWord"))}</span><strong class="hand-metric-value">${escapeHtml(String(handEntry.currentBet ?? 0))}</strong></span>
+          <span class="hand-metric"><span class="hand-metric-label">${escapeHtml(t("valueLabelWord"))}</span><strong class="hand-metric-value">${escapeHtml(formatHandValue(handEntry.hand))}</strong></span>
+          ${insuranceLabel ? `<span class="hand-metric hand-metric-insurance"><span class="hand-metric-label">${escapeHtml(t("insuranceLabelWord"))}</span><strong class="hand-metric-value">${escapeHtml(insuranceLabel.replace(/^.+?\s/, ""))}</strong></span>` : ""}
         </div>
         <div class="card-row"></div>
         <p class="hand-line muted">${escapeHtml(resultLabel)}</p>
@@ -541,8 +847,8 @@ function renderTables(tables = []) {
         <strong class="quick-table-name">${escapeHtml(tableId)}</strong>
         <span class="quick-table-count">${seatsTaken}/7</span>
       </div>
-      <p class="quick-table-meta">${escapeHtml(formatResult(live.phase))} · ${seatsTaken} player${seatsTaken === 1 ? "" : "s"} seated</p>
-      <button type="button" data-table-id="${escapeHtml(tableId)}" ${state.authenticated ? "" : "disabled"}>${isCurrent ? "Playing Here" : "Sit Here"}</button>
+      <p class="quick-table-meta">${escapeHtml(t("tablePlayersSeated", { phase: formatResult(live.phase), count: seatsTaken, playerWord: getPlayerWord(seatsTaken) }))}</p>
+      <button type="button" data-table-id="${escapeHtml(tableId)}" ${state.authenticated ? "" : "disabled"}>${isCurrent ? t("playingHere") : t("sitHere")}</button>
     `;
     elements.quickTablesGrid.append(card);
   }
@@ -601,8 +907,8 @@ function upsertTableSummaryFromState(nextState) {
 
 function updateSeatSummary(me) {
   const activeHand = getActiveHandEntry(me);
-  const fallbackName = state.account?.displayName ?? "Not seated";
-  const displayName = me ? `${me.name} (You)` : fallbackName;
+  const fallbackName = state.account?.displayName ?? t("notSeated");
+  const displayName = me ? `${me.name}${t("youSuffix")}` : fallbackName;
   const displayTable = state.currentState?.tableId ?? state.account?.lastTableId ?? "-";
   const avatarSourceId = me?.id ?? state.account?.username ?? "player";
   const avatarSourceName = me?.name ?? state.account?.displayName ?? "";
@@ -682,36 +988,36 @@ function updateActionState() {
 
   if (!joined) {
     elements.actionHint.textContent = !state.authenticated
-      ? "Sign in, then click Sit Here in the 4-table lobby."
-      : "You are at the lobby. Click Sit Here to join a table again.";
+      ? t("authHintJoin")
+      : t("authHintLobby");
     return;
   }
 
   if (canAct) {
-    const actions = ["hit", "stand", "surrender"];
+    const actions = [t("actionHitWord"), t("actionStandWord"), t("actionSurrenderWord")];
     if (canSplit) {
-      actions.splice(2, 0, "split");
+      actions.splice(2, 0, t("actionSplitWord"));
     }
     if (canDoubleDown) {
-      actions.splice(actions.length - 1, 0, "double down");
+      actions.splice(actions.length - 1, 0, t("actionDoubleDownWord"));
     }
-    elements.actionHint.textContent = `Your turn. You can ${actions.join(", ")}.`;
+    elements.actionHint.textContent = t("yourTurnActions", { actions: actions.join(", ") });
     return;
   }
 
   if (canInsuranceAct) {
     const activeHand = getActiveHandEntry(me);
     const insuranceAmount = activeHand ? Math.floor(Number(activeHand.currentBet) / 2) : 0;
-    elements.actionHint.textContent = `Insurance window. Take insurance for ${insuranceAmount} or choose no insurance.`;
+    elements.actionHint.textContent = t("insuranceWindow", { amount: insuranceAmount });
     return;
   }
 
   if (canStartRound) {
-    elements.actionHint.textContent = "Round starts automatically once every seated player has placed a bet.";
+    elements.actionHint.textContent = t("roundAutoStart");
     return;
   }
 
-  elements.actionHint.textContent = "Waiting for another player, more bets, or the dealer to resolve the hand.";
+  elements.actionHint.textContent = t("waitingGeneric");
 }
 
 function renderState(nextState) {
@@ -730,12 +1036,12 @@ function renderState(nextState) {
 
   const me = getMe();
   const currentPlayer = getPlayerById(safeState.currentPlayerId);
-  elements.phaseLabel.textContent = `Phase: ${formatResult(safeState.phase)}`;
+  elements.phaseLabel.textContent = `${t("phasePrefix")}: ${formatResult(safeState.phase)}`;
   elements.currentPlayerLabel.textContent = currentPlayer
-    ? `Current player: ${currentPlayer.name}${currentPlayer.handCount > 1 && safeState.currentHandIndex !== null && safeState.currentHandIndex !== undefined ? ` · Hand ${safeState.currentHandIndex + 1}` : ""}`
-    : `Current player: ${safeState.currentPlayerId ?? "-"}`;
+    ? `${t("currentPlayerPrefix")}: ${currentPlayer.name}${currentPlayer.handCount > 1 && safeState.currentHandIndex !== null && safeState.currentHandIndex !== undefined ? ` · ${t("handLabel", { index: safeState.currentHandIndex + 1 })}` : ""}`
+    : `${t("currentPlayerPrefix")}: ${safeState.currentPlayerId ?? "-"}`;
   elements.resultBanner.textContent = getRoundSummary(safeState, me);
-  elements.dealerValue.textContent = `Value: ${safeState?.dealer?.value ?? "-"}`;
+  elements.dealerValue.textContent = `${t("valuePrefix")}: ${safeState?.dealer?.value ?? "-"}`;
 
   renderCards(elements.dealerCards, safeState?.dealer?.cards ?? []);
   renderPlayers(safeState?.players ?? []);
@@ -821,7 +1127,7 @@ function setAuthMode(mode) {
     elements.authConfirmInput.value = "";
   }
   elements.authPasswordInput.setAttribute("autocomplete", mode === "register" ? "new-password" : "current-password");
-  elements.authSubmitButton.textContent = mode === "register" ? "Create Account" : "Sign In";
+  elements.authSubmitButton.textContent = mode === "register" ? t("authSubmitRegister") : t("authSubmitLogin");
   elements.authError.textContent = "";
   elements.authError.hidden = true;
 }
@@ -833,13 +1139,13 @@ async function handleAuthSubmit(event) {
   elements.authError.hidden = true;
 
   if (!username || !password) {
-    elements.authError.textContent = "Username and password are required.";
+    elements.authError.textContent = t("authRequiredFields");
     elements.authError.hidden = false;
     return;
   }
 
   if (state.authMode === "register" && password !== elements.authConfirmInput.value) {
-    elements.authError.textContent = "Passwords do not match.";
+    elements.authError.textContent = t("authPasswordsMismatch");
     elements.authError.hidden = false;
     return;
   }
@@ -1291,6 +1597,10 @@ async function handleAdminResetTable(tableId) {
 elements.authForm.addEventListener("submit", handleAuthSubmit);
 elements.authTabLogin.addEventListener("click", () => setAuthMode("login"));
 elements.authTabRegister.addEventListener("click", () => setAuthMode("register"));
+elements.langButtonEn?.addEventListener("click", () => setLanguage("en"));
+elements.langButtonCs?.addEventListener("click", () => setLanguage("cs"));
+elements.langButtonEnTop?.addEventListener("click", () => setLanguage("en"));
+elements.langButtonCsTop?.addEventListener("click", () => setLanguage("cs"));
 elements.logoutButton.addEventListener("click", handleLogout);
 elements.leaveButton.addEventListener("click", handleLeave);
 elements.placeBetButton.addEventListener("click", () => handleAction("blackjack:place_bet", { amount: Number.parseInt(elements.betInput.value, 10) }));
@@ -1402,6 +1712,9 @@ socket.on("blackjack:session_replaced", (payload) => {
 });
 
 async function bootstrap() {
+  state.language = loadStoredLanguage();
+  updateLanguageButtons();
+  applyStaticTranslations();
   setAuthMode("login");
   renderTables([]);
   renderState(defaultState());

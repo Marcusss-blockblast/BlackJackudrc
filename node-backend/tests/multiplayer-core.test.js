@@ -522,11 +522,17 @@ test("account store seeds from one file and persists to another", () => {
 
     const created = store.register("newuser", "Test1234!");
     assert.equal(created.balance, 1000);
+    assert.equal(created.language, null);
+
+    const updatedLanguage = store.setLanguage("newuser", "cs");
+    assert.equal(updatedLanguage.language, "cs");
 
     store.updateBalance("seeduser", 875);
     const restoredStore = new AccountStore({ persistencePath, seedPath, startingBalance: 1000 });
     assert.equal(restoredStore.getAccount("seeduser")?.balance, 875);
     assert.equal(restoredStore.getAccount("newuser")?.balance, 1000);
+    assert.equal(restoredStore.getAccount("newuser")?.language, "cs");
+    assert.equal(restoredStore.getAccount("seeduser")?.language, null);
     assert.equal(JSON.parse(fs.readFileSync(persistencePath, "utf8")).accounts[0].balance, 875);
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });

@@ -7,6 +7,7 @@ const MIN_PASSWORD_LENGTH = 6;
 const DEFAULT_STARTING_BALANCE = 1000;
 const SCRYPT_KEYLEN = 64;
 const VALID_ROLES = new Set(["user", "admin"]);
+const VALID_LANGUAGES = new Set(["en", "cs"]);
 
 function normalizeUsername(username) {
   return String(username ?? "").trim().toLowerCase();
@@ -44,6 +45,9 @@ function toPublicAccount(account) {
     balance: account.balance,
     createdAt: account.createdAt,
     role: account.role ?? "user",
+    language: VALID_LANGUAGES.has(String(account.language ?? "").toLowerCase())
+      ? String(account.language).toLowerCase()
+      : null,
   };
 }
 
@@ -153,6 +157,23 @@ export class AccountStore {
     return toPublicAccount(account);
   }
 
+  setLanguage(username, language) {
+    const normalized = normalizeUsername(username);
+    const normalizedLanguage = String(language ?? "").trim().toLowerCase();
+    if (!VALID_LANGUAGES.has(normalizedLanguage)) {
+      throw new Error("Language must be either 'en' or 'cs'.");
+    }
+
+    const account = this.accounts.get(normalized);
+    if (!account) {
+      throw new Error("Account not found.");
+    }
+
+    account.language = normalizedLanguage;
+    this.saveToDisk();
+    return toPublicAccount(account);
+  }
+
   updateBalance(username, balance) {
     const normalized = normalizeUsername(username);
     const account = this.accounts.get(normalized);
@@ -204,6 +225,9 @@ export class AccountStore {
           : entry.username === "dev"
             ? "admin"
             : "user";
+        entry.language = VALID_LANGUAGES.has(String(entry.language ?? "").toLowerCase())
+          ? String(entry.language).toLowerCase()
+          : null;
 
         this.accounts.set(entry.username, entry);
       }

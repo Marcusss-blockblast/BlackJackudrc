@@ -6,6 +6,7 @@ const MIN_PASSWORD_LENGTH = 6;
 const DEFAULT_STARTING_BALANCE = 1000;
 const SCRYPT_KEYLEN = 64;
 const VALID_ROLES = new Set(["user", "admin"]);
+const VALID_LANGUAGES = new Set(["en", "cs"]);
 
 function normalizeUsername(username) {
   return String(username ?? "").trim().toLowerCase();
@@ -43,6 +44,9 @@ function toPublicAccount(account) {
     balance: account.balance,
     createdAt: account.created_at ? new Date(account.created_at).toISOString() : null,
     role: account.role ?? "user",
+    language: VALID_LANGUAGES.has(String(account.language ?? "").toLowerCase())
+      ? String(account.language).toLowerCase()
+      : null,
   };
 }
 
@@ -72,6 +76,7 @@ export class PostgresAccountStore {
     `);
 
     await this.pool.query("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';");
+    await this.pool.query("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS language TEXT;");
     await this.pool.query("UPDATE accounts SET role = 'admin' WHERE username = 'dev';");
   }
 
@@ -96,11 +101,11 @@ export class PostgresAccountStore {
     try {
       const result = await this.pool.query(
         `
-          INSERT INTO accounts (username, display_name, password_hash, balance, role)
-          VALUES ($1, $2, $3, $4, $5)
-          RETURNING username, display_name, balance, role, created_at;
+          INSERT INTO accounts (username, display_name, password_hash, balance, role, language)
+          VALUES ($1, $2, $3, $4, $5, $6)
+          RETURNING username, display_name, balance, role, language, created_at;
         `,
-        [account.username, account.displayName, account.passwordHash, account.balance, account.role],
+        [account.username, account.displayName, account.passwordHash, account.balance, account.role, null],
       );
 
       return toPublicAccount(result.rows[0]);
@@ -117,7 +122,7 @@ export class PostgresAccountStore {
     const normalized = normalizeUsername(username);
     const result = await this.pool.query(
       `
-        SELECT username, display_name, password_hash, balance, role, created_at
+        SELECT username, display_name, password_hash, balance, role, language, created_at
         FROM accounts
         WHERE username = $1;
       `,
@@ -135,7 +140,7 @@ export class PostgresAccountStore {
   async getAccount(username) {
     const result = await this.pool.query(
       `
-        SELECT username, display_name, balance, role, created_at
+        SELECT username, display_name, balance, role, language, created_at
         FROM accounts
         WHERE username = $1;
       `,
@@ -148,7 +153,7 @@ export class PostgresAccountStore {
   async listAccounts() {
     const result = await this.pool.query(
       `
-        SELECT username, display_name, balance, role, created_at
+        SELECT username, display_name, balance, role, language, created_at
         FROM accounts
         ORDER BY username ASC;
       `,
@@ -187,7 +192,7 @@ export class PostgresAccountStore {
         UPDATE accounts
         SET role = $2
         WHERE username = $1
-        RETURNING username, display_name, balance, role, created_at;
+        RETURNING username, display_name, balance, role, language, created_at;
       `,
       [normalizeUsername(username), normalizedRole],
     );
@@ -209,6 +214,29 @@ export class PostgresAccountStore {
     );
 
     return result.rowCount > 0;
+  }
+
+  async setLanguage(username, language) {
+    const normalizedLanguage = String(language ?? "").trim().toLowerCase();
+    if (!VALID_LANGUAGES.has(normalizedLanguage)) {
+      throw new Error("Language must be either 'en' or 'cs'.");
+    }
+
+    const result = await this.pool.query(
+      `
+        UPDATE accounts
+        SET language = $2
+        WHERE username = $1
+        RETURNING username, display_name, balance, role, language, created_at;
+      `,
+      [normalizeUsername(username), normalizedLanguage],
+    );
+
+    if (result.rowCount === 0) {
+      throw new Error("Account not found.");
+    }
+
+    return toPublicAccount(result.rows[0]);
   }
 
   async updateBalance(username, balance) {

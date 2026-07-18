@@ -231,6 +231,22 @@ export async function createBlackjackServer({
     response.json({ token, account: await accounts.getAccount(username) });
   });
 
+  app.patch("/api/auth/language", async (request, response) => {
+    try {
+      const { token, language } = request.body ?? {};
+      const username = sessions.getUsername(token);
+      if (!username) {
+        response.status(401).json({ error: "Session expired. Please log in again." });
+        return;
+      }
+
+      const account = await accounts.setLanguage(username, language);
+      response.json({ ok: true, account });
+    } catch (error) {
+      response.status(400).json({ error: error.message });
+    }
+  });
+
   app.get("/tables", (_request, response) => {
     response.json({ tables: registry.listTables() });
   });
